@@ -1,0 +1,19 @@
+# Secretos
+.env
+.env.*
+!.env.example
+
+# Sistema
+.DS_Store
+
+# Videos
+*.mp4
+*.mov
+
+# Agente
+agente/.venv/
+agente/evidencias/
+agente/*.db
+agente/videos/
+__pycache__/
+*.pt
