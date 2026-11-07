@@ -92,7 +92,7 @@ Nota: en BD2 todo se modeló en MongoDB como ejercicio de la materia. En la impl
 
 | Problema | Solución |
 |---|---|
-| Pico de detecciones | `POST /detecciones` responde **202** y encola; un worker procesa (nivelación de carga) |
+| Pico de detecciones | `POST /agente/eventos` responde **202** y encola; un worker procesa (nivelación de carga) |
 | Un agente que se vuelve loco | **Rate limit** por token (`throttle`) → 429 |
 | Reenvíos duplicados | **Idempotencia** por `uuid` del evento (índice único en Mongo) |
 | Se cae el internet | **Cola local SQLite** en el agente + reintento con espera creciente |

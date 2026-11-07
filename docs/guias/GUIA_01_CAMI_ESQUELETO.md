@@ -1,6 +1,6 @@
 # Guía 01 · Cami · Repo, esqueleto Laravel modular y Docker
 
-**Día:** jueves 5 · **Dueño:** Cami · **Jira:** épica Infraestructura
+**Día:** viernes 6 · **Dueño:** Cami · **Jira:** épica Infraestructura
 **Objetivo del día:** que exista el repo, que `docker compose up` levante Laravel + PostgreSQL + MongoDB + Redis, y que estén creados los 5 módulos vacíos para que mañana cada uno trabaje en lo suyo sin chocar.
 
 > Antes de esta guía: leer `PLAN_MAESTRO_NEXORA.md` y `docs/CONTRATO_API_AGENTE.md`.
