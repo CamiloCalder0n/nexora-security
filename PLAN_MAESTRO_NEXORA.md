@@ -139,6 +139,7 @@ nexora-security/
 - **Sin rastro de IA**: ni `Co-Authored-By` de Claude ni "Generated with Claude Code" en commits o PR. El repo trae `.claude/settings.json` con `"attribution": {"commit": "", "pr": ""}`.
 - Etiquetas: `docs`, `v0.1`, `v0.2`, `v0.3`, `v0.4`, `v1.0` (las de Backend).
 - **Nunca** `.env`, ni el video .mp4 grande, ni tokens en el repo.
+- **Todo el esquema de PostgreSQL (migraciones, modelos, factories, seeders) lo hace Cami**, incluidas zonas, franjas y cámaras. Santiago hace MongoDB y la lógica de Monitoreo y Alertas encima.
 - Cada uno trabaja **solo en sus módulos** → casi no hay conflictos. Archivos compartidos (`routes/`, `composer.json`, `docker-compose.yml`) se tocan avisando por WhatsApp.
 
 ### Uso de Claude
@@ -211,12 +212,12 @@ nexora-security/
 
 | Día | Cami | Santiago | Juntos / cierre del día |
 |---|---|---|---|
-| **Jue 5** | Crear repo, esqueleto Laravel, módulos, `docker-compose` (pg, mongo, redis), CLAUDE.md, Jira (épicas, sprint, asignaciones) | Agente standalone: .mp4 → YOLOv8 → JSON en consola | Acordar el contrato JSON de `/detecciones` · agendar la entrevista |
-| **Vie 6** | Identidad: login, 4 roles, Sanctum. Portería: migraciones, modelos, factories, seeders | Monitoreo y Alertas: zonas, franjas, cámaras, Mongo (eventos, alertas, bitácora), ingesta 202 + cola + CorrelacionService | `php artisan migrate --seed` funciona · etiqueta `v0.1` |
-| **Sáb 7** | Panel: layout, CRUD unidades/residentes, autorizaciones, registro de ingreso, 404/500 | Ciclo de la alerta (supresión, cerrar con clasificación, escalamiento), bot de Telegram, cámaras caídas, hash de bitácora | Agente → API local → alerta en Telegram · etiqueta `v0.2` |
-| **Dom 8** | Dashboard con gráfico, informes del consejo, historial con filtros, API Resources (zonas + autorizaciones), Postman | Docker de producción, deploy Render + Neon + Atlas + Upstash, agente contra URL pública, cola sin conexión, k6 | Todo funcionando en la URL pública · etiquetas `v0.3` y `v0.4` |
-| **Lun 9** | Documento ArqSoft (C4, bounded contexts, ADRs, resiliencia) + arquitectura.pdf v2 de Backend | Documento final IngSoft + BD2 v1.04 + presentación | **Entrevista en video con el celador** · README, matriz de cumplimiento, Jira al día |
-| **Mar 10** | Ensayo de la demo y arreglos | Ensayo de la demo y arreglos | Etiqueta `v1.0` y entregas |
+| **Jue 5** | ✅ Repo creado + docs (Paso 0) | — | — |
+| **Vie 6 (noche)** | Guía 01: esqueleto Laravel, Docker, módulos, roles | Guía 01: agente con IA (si puede) | — |
+| **Sáb 7** | Guía 02: **todo el esquema PostgreSQL** (PR temprano), reglas de Portería, API v1 zonas + autorizaciones | Termina el agente · Guía 02: Mongo, ingesta, correlación, alertas, bitácora, escalamiento | Agente → API local → alerta · etiquetas `v0.1` y `v0.2` |
+| **Dom 8** | Guía 03: panel Blade completo (roles, CRUD, ingresos, cola de alertas, 404/500), dashboard, informes, Postman | Guía 03: Telegram, Docker de producción, deploy (Render + Neon + Atlas + Upstash), agente contra URL pública, k6 | Todo en la URL pública · etiquetas `v0.3` y `v0.4` |
+| **Lun 9** | Documento ArqSoft + arquitectura.pdf v2 de Backend | Documento final IngSoft + BD2 v1.04 + presentación | **Entrevista con el celador** · README, matriz, Jira |
+| **Mar 10** | Ensayo y entregas | Ensayo y entregas | Etiqueta `v1.0` |
 
 **La entrevista con el celador** se graba el lunes 9 (guion en la sección 9). Si se puede antes, mejor.
 
