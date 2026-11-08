@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\User;
+use App\Modules\Identidad\Domain\Rol;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -30,7 +31,14 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'rol' => Rol::Residente,
+            'activo' => true,
         ];
+    }
+
+    public function conRol(Rol $rol): static
+    {
+        return $this->state(fn () => ['rol' => $rol]);
     }
 
     /**

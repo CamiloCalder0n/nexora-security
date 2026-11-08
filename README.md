@@ -10,7 +10,16 @@ Sistema de vigilancia para un conjunto residencial. Detecta presencia en las cá
 
 ## Levantar en local
 
-*Se completa cuando el entorno esté listo.*
+```bash
+cp backend/.env.example backend/.env
+docker compose up -d --build
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate --seed
+docker compose exec app php artisan test
+# http://localhost:8000
+```
+
+Usuarios de prueba (solo local, contraseña `password`): `admin@nexora.test`, `vigilante@nexora.test`, `residente@nexora.test`, `consejo@nexora.test`, `agente@nexora.test`.
 
 ## Integrantes
 
