@@ -6,6 +6,7 @@ use App\Modules\Alertas\Domain\EstadoAlerta;
 use App\Modules\Alertas\Domain\Models\Alerta;
 use App\Modules\Alertas\Domain\TipoAlerta;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Collection;
 
 class AlertaRepository
 {
@@ -29,6 +30,30 @@ class AlertaRepository
     public function conEvento(string $eventoId): ?Alerta
     {
         return Alerta::where('eventos_ids', $eventoId)->first();
+    }
+
+    /** Abiertas de la prioridad dada que llevan sin atender (ni escalar) desde antes de `$limite`. */
+    public function paraEscalar(int $prioridad, CarbonInterface $limite): Collection
+    {
+        return Alerta::where('estado', EstadoAlerta::Abierta)
+            ->where('prioridad', $prioridad)
+            ->where(fn ($q) => $q
+                ->where(fn ($q) => $q->whereNull('fecha_escalamiento')->where('fecha_hora', '<=', $limite))
+                ->orWhere('fecha_escalamiento', '<=', $limite))
+            ->get();
+    }
+
+    /**
+     * ¿Ya hay una alerta sin cerrar por esta misma caída? Una alerta creada antes del último
+     * heartbeat es de una caída anterior (la cámara volvió después), así que no cuenta.
+     */
+    public function camaraSinSenalDesde(int $camaraId, CarbonInterface $ultimaConexion): bool
+    {
+        return Alerta::where('tipo', TipoAlerta::CamaraSinSenal)
+            ->where('camara.camara_id', $camaraId)
+            ->where('estado', '!=', EstadoAlerta::Cerrada)
+            ->where('fecha_hora', '>=', $ultimaConexion)
+            ->exists();
     }
 
     public function crear(array $datos): Alerta

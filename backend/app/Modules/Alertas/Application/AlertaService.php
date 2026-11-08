@@ -6,16 +6,19 @@ use App\Models\User;
 use App\Modules\Alertas\Domain\Clasificacion;
 use App\Modules\Alertas\Domain\EstadoAlerta;
 use App\Modules\Alertas\Domain\Events\AlertaCreada;
+use App\Modules\Alertas\Domain\Events\AlertaEscalada;
 use App\Modules\Alertas\Domain\Models\Alerta;
 use App\Modules\Alertas\Domain\Reglas\ResultadoRegla;
 use App\Modules\Alertas\Domain\TipoAlerta;
 use App\Modules\Alertas\Domain\TransicionInvalida;
 use App\Modules\Alertas\Infrastructure\Repositories\AlertaRepository;
 use App\Modules\Monitoreo\Application\EventoService;
+use App\Modules\Monitoreo\Domain\Events\CamaraSinSenal;
 use App\Modules\Monitoreo\Domain\Models\Evento;
 use App\Modules\Monitoreo\Domain\Models\Zona;
 use App\Modules\Monitoreo\Domain\ResultadoEvento;
 use Closure;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 
@@ -96,6 +99,68 @@ class AlertaService
         $this->eventos->marcar($evento, ResultadoEvento::Suprimido, ['alerta_id' => $alerta->id]);
 
         return $alerta;
+    }
+
+    /** HU13: una alerta por caída de la cámara, aunque el scheduler la vuelva a reportar. */
+    public function alertarCamaraSinSenal(CamaraSinSenal $caida): ?Alerta
+    {
+        return Cache::lock("alertas:camara:{$caida->camaraId}", 10)->block(5, function () use ($caida) {
+            $ultimaConexion = Carbon::parse($caida->ultimaConexion);
+            if ($this->alertas->camaraSinSenalDesde($caida->camaraId, $ultimaConexion)) {
+                return null;
+            }
+
+            $desde = $ultimaConexion->copy()->setTimezone(config('app.timezone'))->format('H:i');
+            $motivo = "{$caida->camaraNombre} ({$caida->zonaNombre}) sin señal desde las {$desde}: "
+                .'no llega el heartbeat del agente hace más de '.config('monitoreo.minutos_sin_senal').' min';
+
+            $alerta = $this->alertas->crear([
+                'fecha_hora' => now(),
+                'tipo' => TipoAlerta::CamaraSinSenal,
+                'prioridad' => config('alertas.prioridad_alta'),
+                'motivo' => $motivo,
+                'regla' => 'camara_sin_heartbeat',
+                'camara' => ['camara_id' => $caida->camaraId, 'nombre' => $caida->camaraNombre],
+                'zona' => ['zona_id' => $caida->zonaId, 'nombre' => $caida->zonaNombre],
+            ]);
+            $this->bitacora->registrar('alerta_creada', $motivo, null, EstadoAlerta::Abierta->value, null, $alerta->id);
+            AlertaCreada::dispatch($alerta->id);
+
+            return $alerta;
+        });
+    }
+
+    /** HU12: las de prioridad alta sin atender suben un nivel cada N min; devuelve cuántas subieron. */
+    public function escalarVencidas(): int
+    {
+        $minutos = config('alertas.minutos_escalar');
+        $escaladas = 0;
+
+        foreach ($this->alertas->paraEscalar(config('alertas.prioridad_alta'), now()->subMinutes($minutos)) as $candidata) {
+            $escaladas += $this->enLockDeZona($candidata->zona['zona_id'], function () use ($candidata, $minutos) {
+                // Se relee dentro del lock: la pudieron atender mientras se recorría la lista.
+                $alerta = $candidata->fresh();
+                $limite = now()->subMinutes($minutos);
+                if ($alerta->estado !== EstadoAlerta::Abierta || ($alerta->fecha_escalamiento ?? $alerta->fecha_hora)->gt($limite)) {
+                    return 0;
+                }
+
+                $alerta->fill([
+                    'nivel_escalamiento' => $alerta->nivel_escalamiento + 1,
+                    'fecha_escalamiento' => now(),
+                ]);
+                $this->alertas->guardar($alerta);
+                $this->bitacora->registrar(
+                    'alerta_escalada', "Sin atender: sube a nivel {$alerta->nivel_escalamiento}",
+                    EstadoAlerta::Abierta->value, EstadoAlerta::Abierta->value, null, $alerta->id,
+                );
+                AlertaEscalada::dispatch($alerta->id, $alerta->nivel_escalamiento);
+
+                return 1;
+            });
+        }
+
+        return $escaladas;
     }
 
     public function atender(Alerta $alerta, User $usuario): Alerta

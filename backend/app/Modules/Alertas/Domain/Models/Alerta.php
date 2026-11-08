@@ -14,6 +14,7 @@ use MongoDB\Laravel\Eloquent\Model;
 #[Table('alertas')]
 #[Fillable([
     'schema_version', 'fecha_hora', 'fecha_ultimo_evento', 'tipo', 'prioridad', 'motivo', 'regla', 'estado', 'nivel_escalamiento',
+    'fecha_escalamiento',
     'clasificacion', 'observacion', 'camara', 'zona', 'eventos_ids', 'num_eventos', 'evidencias_recientes',
     'atendida_por', 'fecha_atencion', 'fecha_cierre',
 ])]
@@ -27,6 +28,7 @@ class Alerta extends Model
         'schema_version' => self::SCHEMA_VERSION,
         'estado' => 'abierta',
         'nivel_escalamiento' => 0,
+        'fecha_escalamiento' => null,
         'clasificacion' => null,
         'observacion' => null,
         'eventos_ids' => [],
@@ -42,6 +44,7 @@ class Alerta extends Model
         return [
             'fecha_hora' => 'datetime',
             'fecha_ultimo_evento' => 'datetime',
+            'fecha_escalamiento' => 'datetime',
             'fecha_atencion' => 'datetime',
             'fecha_cierre' => 'datetime',
             'prioridad' => 'integer',

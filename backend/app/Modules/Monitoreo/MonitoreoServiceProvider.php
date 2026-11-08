@@ -3,7 +3,9 @@
 namespace App\Modules\Monitoreo;
 
 use App\Modules\Monitoreo\Infrastructure\Console\CrearIndicesMongo;
+use App\Modules\Monitoreo\Infrastructure\Console\MarcarCamarasSinSenal;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
@@ -26,8 +28,12 @@ class MonitoreoServiceProvider extends ServiceProvider
             ->by('agente:'.($request->user()?->currentAccessToken()?->id ?? $request->ip())));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CrearIndicesMongo::class]);
+            $this->commands([CrearIndicesMongo::class, MarcarCamarasSinSenal::class]);
         }
+
+        $this->callAfterResolving(Schedule::class, function (Schedule $schedule) {
+            $schedule->command('nexora:camaras-sin-senal')->everyMinute()->withoutOverlapping();
+        });
 
         if (! $this->app->routesAreCached()) {
             Route::middleware('web')->group(__DIR__.'/Routes/web.php');
