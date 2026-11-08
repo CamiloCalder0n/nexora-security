@@ -1,9 +1,9 @@
-import re
 from datetime import datetime
 
 from nexora_agente.detector import Deteccion
 from nexora_agente.evento import ZONA_COLOMBIA, armar_evento
 from nexora_agente.filtro import Filtro
+from tests.mock_api import UUID_V4
 
 PERSONA = Deteccion("persona", 0.8, (0, 0, 10, 10))
 
@@ -71,7 +71,7 @@ def test_evento_sigue_el_contrato():
     fecha = datetime(2026, 11, 6, 19, 4, 40, tzinfo=ZONA_COLOMBIA)
     evento = armar_evento(1, "persona", 2, 0.873, fecha, "evidencias/cam1/20261106-190440.jpg")
     assert set(evento) == {"uuid", "camara_id", "tipo_objeto", "cantidad", "confianza", "fecha_hora", "ruta_evidencia"}
-    assert re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}", evento["uuid"])
+    assert UUID_V4.match(evento["uuid"])
     assert evento["fecha_hora"] == "2026-11-06T19:04:40-05:00"
     assert evento["confianza"] == 0.87
     assert "ruta_evidencia" not in armar_evento(1, "persona", 1, 0.5, fecha, None)
