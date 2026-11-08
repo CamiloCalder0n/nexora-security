@@ -25,6 +25,7 @@ class CrearIndicesMongo extends Command
             'alertas' => [
                 [['estado' => 1, 'fecha_hora' => -1], ['name' => 'estado_fecha']],
                 [['zona.zona_id' => 1, 'estado' => 1], ['name' => 'zona_estado']],
+                [['eventos_ids' => 1], ['name' => 'eventos_ids']],
             ],
             'bitacora' => [
                 [['fecha_hora' => 1], ['name' => 'fecha']],

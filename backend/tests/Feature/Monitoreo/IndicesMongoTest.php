@@ -34,6 +34,7 @@ class IndicesMongoTest extends TestCase
         $this->assertArrayHasKey('zona_fecha', $eventos);
         $this->assertArrayHasKey('estado_fecha', $this->indices('alertas'));
         $this->assertArrayHasKey('zona_estado', $this->indices('alertas'));
+        $this->assertArrayHasKey('eventos_ids', $this->indices('alertas'));
         $this->assertArrayHasKey('fecha', $this->indices('bitacora'));
         $this->assertTrue($this->indices('bitacora')['secuencia_unica']->isUnique());
     }
