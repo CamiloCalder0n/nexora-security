@@ -12,6 +12,8 @@ return [
     // Escalamiento (HU12): las de esta prioridad suben un nivel cada N minutos sin atender.
     'prioridad_alta' => 3,
     'minutos_escalar' => (int) env('ALERTAS_MINUTOS_ESCALAR', 5),
+    // Tope: después de este nivel la alerta sigue abierta en el panel, pero ya no se vuelve a avisar.
+    'max_nivel_escalamiento' => 3,
 
     // Bot de Telegram (HU21, HU24). Sin token no se envía nada: la alerta igual queda en el panel.
     'telegram' => [

@@ -32,11 +32,12 @@ class AlertaRepository
         return Alerta::where('eventos_ids', $eventoId)->first();
     }
 
-    /** Abiertas de la prioridad dada que llevan sin atender (ni escalar) desde antes de `$limite`. */
-    public function paraEscalar(int $prioridad, CarbonInterface $limite): Collection
+    /** Abiertas de la prioridad dada, bajo el nivel tope, que llevan sin atender (ni escalar) desde antes de `$limite`. */
+    public function paraEscalar(int $prioridad, CarbonInterface $limite, int $nivelTope): Collection
     {
         return Alerta::where('estado', EstadoAlerta::Abierta)
             ->where('prioridad', $prioridad)
+            ->where('nivel_escalamiento', '<', $nivelTope)
             ->where(fn ($q) => $q
                 ->where(fn ($q) => $q->whereNull('fecha_escalamiento')->where('fecha_hora', '<=', $limite))
                 ->orWhere('fecha_escalamiento', '<=', $limite))

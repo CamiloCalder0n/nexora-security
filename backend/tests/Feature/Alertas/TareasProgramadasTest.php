@@ -92,9 +92,9 @@ class TareasProgramadasTest extends TestCase
         // vigilante tocara "Atender" en Telegram en ese instante).
         $this->app->instance(AlertaRepository::class, new class extends AlertaRepository
         {
-            public function paraEscalar(int $prioridad, CarbonInterface $limite): Collection
+            public function paraEscalar(int $prioridad, CarbonInterface $limite, int $nivelTope): Collection
             {
-                $lista = parent::paraEscalar($prioridad, $limite);
+                $lista = parent::paraEscalar($prioridad, $limite, $nivelTope);
                 Alerta::query()->update(['estado' => 'atendida']);
 
                 return $lista;
@@ -137,5 +137,21 @@ class TareasProgramadasTest extends TestCase
         Carbon::setTestNow(now()->addMinutes(5));
         $this->artisan('nexora:escalar-alertas');
         $this->assertSame(2, $alerta->fresh()->nivel_escalamiento);
+    }
+
+    public function test_no_escala_mas_alla_del_tope_para_no_avisar_para_siempre(): void
+    {
+        Event::fake([AlertaEscalada::class]);
+        $alerta = $this->alerta(3, 6);
+        $tope = config('alertas.max_nivel_escalamiento');
+
+        foreach (range(1, $tope + 3) as $_) {
+            $this->artisan('nexora:escalar-alertas');
+            Carbon::setTestNow(now()->addMinutes(6));
+        }
+
+        $this->assertSame($tope, $alerta->fresh()->nivel_escalamiento);
+        $this->assertSame('abierta', $alerta->fresh()->estado->value);
+        Event::assertDispatchedTimes(AlertaEscalada::class, $tope);
     }
 }
