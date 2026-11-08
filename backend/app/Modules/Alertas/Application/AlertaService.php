@@ -210,6 +210,11 @@ class AlertaService
                 'observacion' => 'Un incidente necesita una observación de lo que pasó.',
             ]);
         }
+        if ($observacion !== null && mb_strlen($observacion) > Alerta::MAX_OBSERVACION) {
+            throw ValidationException::withMessages([
+                'observacion' => 'La observación no puede pasar de '.Alerta::MAX_OBSERVACION.' caracteres.',
+            ]);
+        }
 
         return $this->enLockDeZona($alerta->zona['zona_id'], function () use ($alerta, $usuario, $tipo, $observacion) {
             return $this->cerrarBloqueado($alerta->refresh(), $usuario, $tipo, $observacion);

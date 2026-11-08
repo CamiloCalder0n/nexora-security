@@ -106,6 +106,15 @@ class CorrelacionTest extends TestCase
         Event::assertDispatched(AlertaCreada::class, fn ($e) => $e->alertaId === $alerta->id);
     }
 
+    public function test_una_zona_con_prioridad_fuera_de_rango_igual_genera_la_alerta(): void
+    {
+        $this->camara->zona->update(['prioridad_base' => 9]);
+
+        $this->enviarEvento();
+
+        $this->assertSame(3, Alerta::sole()->prioridad);
+    }
+
     public function test_dos_eventos_en_5_minutos_son_una_sola_alerta_con_2_eventos(): void
     {
         $primero = $this->enviarEvento();

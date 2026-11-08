@@ -80,6 +80,12 @@ class CicloAlertaTest extends TestCase
         $this->servicio->cerrar($this->alerta(), $this->vigilante, 'incidente', '  ');
     }
 
+    public function test_observacion_de_mas_de_2000_caracteres_es_422(): void
+    {
+        $this->expectException(ValidationException::class);
+        $this->servicio->cerrar($this->alerta(), $this->vigilante, 'incidente', str_repeat('a', 2001));
+    }
+
     public function test_cerrar_como_falsa_alarma(): void
     {
         $alerta = $this->servicio->cerrar($this->alerta(), $this->vigilante, 'falsa_alarma')->fresh();
