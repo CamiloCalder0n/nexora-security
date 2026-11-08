@@ -35,6 +35,18 @@ class AutenticacionService
         return $usuario;
     }
 
+    /** El agente es un cliente de la API: no entra al panel web. */
+    public function validarCredencialesPanel(string $email, string $password): User
+    {
+        $usuario = $this->validarCredenciales($email, $password);
+
+        if ($usuario->rol === Rol::Agente) {
+            throw new CredencialesInvalidas;
+        }
+
+        return $usuario;
+    }
+
     /** @return array{token: string, usuario: User} */
     public function emitirToken(string $email, string $password, string $dispositivo, ?Rol $soloRol = null): array
     {
