@@ -17,6 +17,10 @@ class EnsureRol
             abort(401, 'No autenticado.');
         }
 
+        if (! $usuario->activo) {
+            abort(403, 'La cuenta está inactiva.');
+        }
+
         $permitidos = array_map(fn (string $rol) => Rol::from($rol), $roles);
 
         if (! in_array($usuario->rol, $permitidos, true)) {

@@ -17,6 +17,6 @@ abstract class ReglaPorteriaException extends RuntimeException
             return response()->json(['message' => $this->getMessage()], $this->status());
         }
 
-        return back()->withInput()->withErrors(['autorizacion' => $this->getMessage()]);
+        return back()->withInput()->withErrors(['regla' => $this->getMessage()]);
     }
 }
