@@ -44,7 +44,8 @@ class AuthApiTest extends TestCase
         User::factory()->create(['email' => 'i@nexora.test', 'activo' => false]);
 
         $this->postJson(route('api.v1.identidad.login'), ['email' => 'i@nexora.test', 'password' => 'password'])
-            ->assertUnauthorized();
+            ->assertUnauthorized()
+            ->assertJsonPath('message', 'Credenciales inválidas');
     }
 
     public function test_token_de_usuario_desactivado_recibe_403(): void
@@ -80,6 +81,7 @@ class AuthApiTest extends TestCase
             'password' => 'password',
             'device_name' => 'agente-portatil-1',
         ])->assertOk()
+            ->assertExactJsonStructure(['token', 'usuario' => ['id', 'nombre', 'rol']])
             ->assertJsonPath('usuario.nombre', 'Agente portería')
             ->assertJsonPath('usuario.rol', 'agente');
 

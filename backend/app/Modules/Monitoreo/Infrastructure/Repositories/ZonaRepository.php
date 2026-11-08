@@ -18,7 +18,7 @@ class ZonaRepository
             ->withCount('camaras')
             ->when($filtros['search'] ?? null, fn (Builder $q, string $texto) => $q->whereRaw('LOWER(nombre) LIKE ?', ['%'.mb_strtolower($texto).'%']))
             ->when($filtros['tipo'] ?? null, fn (Builder $q, $tipo) => $q->where('tipo', $tipo))
-            ->when(isset($filtros['activa']) && $filtros['activa'] !== '', fn (Builder $q) => $q->where('activa', (bool) $filtros['activa']))
+            ->when(isset($filtros['activa']) && $filtros['activa'] !== '', fn (Builder $q) => $q->where('activa', filter_var($filtros['activa'], FILTER_VALIDATE_BOOLEAN)))
             ->orderByDesc('prioridad_base')
             ->orderBy('nombre')
             ->paginate($porPagina)

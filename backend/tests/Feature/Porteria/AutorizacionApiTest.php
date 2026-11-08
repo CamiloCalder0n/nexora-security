@@ -191,6 +191,8 @@ class AutorizacionApiTest extends TestCase
         Autorizacion::factory()->paraResidente($this->residente, $this->unidad)->usada()->create();
 
         $this->getJson(route('api.v1.porteria.autorizaciones.index'))->assertOk()->assertJsonCount(1, 'data');
+        $usada = Autorizacion::where('estado', 'usada')->first();
+        $this->getJson(route('api.v1.porteria.autorizaciones.show', $usada))->assertForbidden();
         $this->postJson(route('api.v1.porteria.autorizaciones.store'), $this->datos())->assertForbidden();
     }
 

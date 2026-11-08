@@ -29,7 +29,7 @@ class AutenticacionService
         }
 
         if (! $usuario->activo) {
-            throw new CredencialesInvalidas('La cuenta está inactiva.');
+            throw new CredencialesInvalidas;
         }
 
         return $usuario;

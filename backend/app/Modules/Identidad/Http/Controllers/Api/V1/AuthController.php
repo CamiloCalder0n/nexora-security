@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Identidad\Application\AutenticacionService;
 use App\Modules\Identidad\Domain\Rol;
 use App\Modules\Identidad\Http\Requests\LoginRequest;
+use App\Modules\Identidad\Http\Resources\SesionUsuarioResource;
 use App\Modules\Identidad\Http\Resources\UsuarioResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -47,7 +48,7 @@ class AuthController extends Controller
 
         return response()->json([
             'token' => $resultado['token'],
-            'usuario' => new UsuarioResource($resultado['usuario']),
+            'usuario' => new SesionUsuarioResource($resultado['usuario']),
         ]);
     }
 }

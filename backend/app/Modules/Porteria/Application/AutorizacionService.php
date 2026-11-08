@@ -8,6 +8,7 @@ use App\Modules\Porteria\Domain\Exceptions\AutorizacionNoVigente;
 use App\Modules\Porteria\Domain\Models\Autorizacion;
 use App\Modules\Porteria\Domain\Models\Residente;
 use App\Modules\Porteria\Infrastructure\Repositories\AutorizacionRepository;
+use App\Modules\Porteria\Infrastructure\Repositories\ResidenteRepository;
 use Carbon\CarbonInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -19,7 +20,10 @@ class AutorizacionService
 {
     public const MAX_DIAS = 7;
 
-    public function __construct(private readonly AutorizacionRepository $autorizaciones) {}
+    public function __construct(
+        private readonly AutorizacionRepository $autorizaciones,
+        private readonly ResidenteRepository $residentes,
+    ) {}
 
     public function listar(array $filtros = []): LengthAwarePaginator
     {
@@ -28,7 +32,7 @@ class AutorizacionService
 
     public function listarDeResidente(Residente $residente, array $filtros = []): LengthAwarePaginator
     {
-        $filtros['unidad_ids'] = $residente->unidades()->pluck('unidades.id')->all();
+        $filtros['unidad_ids'] = $this->residentes->idsUnidades($residente);
 
         return $this->autorizaciones->paginar($filtros);
     }
@@ -46,7 +50,7 @@ class AutorizacionService
 
     public function crear(Residente $residente, array $datos): Autorizacion
     {
-        if (! $residente->unidades()->whereKey($datos['unidad_id'])->exists()) {
+        if (! $this->residentes->perteneceUnidad($residente, (int) $datos['unidad_id'])) {
             throw new AuthorizationException('La unidad no pertenece al residente.');
         }
 

@@ -24,7 +24,7 @@ class UsuarioRepository
                     ->orWhereRaw('LOWER(email) LIKE ?', [$like]));
             })
             ->when($filtros['rol'] ?? null, fn (Builder $q, $rol) => $q->where('rol', $rol))
-            ->when(isset($filtros['activo']) && $filtros['activo'] !== '', fn (Builder $q) => $q->where('activo', (bool) $filtros['activo']))
+            ->when(isset($filtros['activo']) && $filtros['activo'] !== '', fn (Builder $q) => $q->where('activo', filter_var($filtros['activo'], FILTER_VALIDATE_BOOLEAN)))
             ->orderBy('name')
             ->paginate($porPagina)
             ->withQueryString();

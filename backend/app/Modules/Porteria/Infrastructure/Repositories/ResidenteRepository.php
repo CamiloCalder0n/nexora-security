@@ -58,6 +58,17 @@ class ResidenteRepository
         });
     }
 
+    public function perteneceUnidad(Residente $residente, int $unidadId): bool
+    {
+        return $residente->unidades()->whereKey($unidadId)->exists();
+    }
+
+    /** @return list<int> */
+    public function idsUnidades(Residente $residente): array
+    {
+        return $residente->unidades()->pluck('unidades.id')->all();
+    }
+
     public function tieneAutorizaciones(Residente $residente): bool
     {
         return $residente->autorizaciones()->exists();

@@ -61,6 +61,11 @@ class ZonaApiTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.nombre', 'Cuarto de basuras');
+
+        Zona::factory()->inactiva()->create();
+        $this->getJson(route('api.v1.monitoreo.zonas.index', ['activa' => 'false']))
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
     }
 
     public function test_store_crea_con_franjas_201(): void

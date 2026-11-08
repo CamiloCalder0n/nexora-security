@@ -8,6 +8,7 @@ use App\Modules\Porteria\Domain\Exceptions\AutorizacionFueraDeVentana;
 use App\Modules\Porteria\Domain\Models\RegistroPorteria;
 use App\Modules\Porteria\Domain\Models\Residente;
 use App\Modules\Porteria\Infrastructure\Repositories\RegistroPorteriaRepository;
+use App\Modules\Porteria\Infrastructure\Repositories\ResidenteRepository;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
@@ -18,6 +19,7 @@ class RegistroPorteriaService
     public function __construct(
         private readonly RegistroPorteriaRepository $registros,
         private readonly AutorizacionService $autorizaciones,
+        private readonly ResidenteRepository $residentes,
     ) {}
 
     public function listar(array $filtros = []): LengthAwarePaginator
@@ -27,7 +29,7 @@ class RegistroPorteriaService
 
     public function visitasDeResidente(Residente $residente, array $filtros = []): LengthAwarePaginator
     {
-        $filtros['unidad_ids'] = $residente->unidades()->pluck('unidades.id')->all();
+        $filtros['unidad_ids'] = $this->residentes->idsUnidades($residente);
 
         return $this->registros->paginar($filtros);
     }
