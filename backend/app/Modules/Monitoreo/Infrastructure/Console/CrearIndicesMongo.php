@@ -32,6 +32,8 @@ class CrearIndicesMongo extends Command
             'bitacora' => [
                 [['fecha_hora' => 1], ['name' => 'fecha']],
                 [['secuencia' => 1], ['name' => 'secuencia_unica', 'unique' => true]],
+                // Cada alerta nueva pregunta si ya tiene su entrada (BitacoraService::existe) y el historial filtra por alerta.
+                [['alerta_id' => 1, 'tipo' => 1], ['name' => 'alerta_tipo']],
             ],
         ];
     }

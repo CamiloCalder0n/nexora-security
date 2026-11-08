@@ -4,12 +4,12 @@ namespace App\Modules\Alertas\Application;
 
 use App\Models\User;
 use App\Modules\Alertas\Domain\Models\EntradaBitacora;
-use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Bitácora encadenada (HU28): cada entrada guarda el hash de la anterior, así que cambiar
- * o borrar una entrada vieja rompe la cadena y `nexora:verificar-bitacora` lo detecta.
+ * Bitácora encadenada (HU28): cada entrada guarda el hash de la anterior y el suyo cubre todos
+ * sus campos, así que cambiar o borrar una entrada vieja rompe la cadena y `nexora:verificar-bitacora`
+ * lo detecta. Lo que una cadena de hashes no detecta es que borren las últimas entradas.
  */
 class BitacoraService
 {
@@ -32,9 +32,7 @@ class BitacoraService
             $datosUsuario = $usuario
                 ? ['usuario_id' => $usuario->id, 'nombre' => $usuario->name, 'rol' => $usuario->rol->value]
                 : ['usuario_id' => null, 'nombre' => 'Sistema', 'rol' => 'sistema'];
-            $hashAnterior = $anterior->hash ?? self::HASH_INICIAL;
-
-            return EntradaBitacora::create([
+            $entrada = new EntradaBitacora([
                 'secuencia' => ($anterior->secuencia ?? 0) + 1,
                 'fecha_hora' => $fecha,
                 'tipo' => $tipo,
@@ -43,9 +41,12 @@ class BitacoraService
                 'estado_nuevo' => $estadoNuevo,
                 'usuario' => $datosUsuario,
                 'alerta_id' => $alertaId,
-                'hash_anterior' => $hashAnterior,
-                'hash' => self::hash($hashAnterior, $fecha, $tipo, $descripcion, $estadoNuevo, $datosUsuario['usuario_id']),
+                'hash_anterior' => $anterior->hash ?? self::HASH_INICIAL,
             ]);
+            $entrada->hash = self::hash($entrada);
+            $entrada->save();
+
+            return $entrada;
         });
     }
 
@@ -54,17 +55,22 @@ class BitacoraService
         return EntradaBitacora::where('alerta_id', $alertaId)->where('tipo', $tipo)->exists();
     }
 
-    public static function hash(
-        string $hashAnterior,
-        CarbonInterface $fecha,
-        string $tipo,
-        string $descripcion,
-        string $estadoNuevo,
-        ?int $usuarioId,
-    ): string {
-        return hash('sha256', $hashAnterior
-            .$fecha->copy()->utc()->format('Y-m-d\TH:i:s\Z')
-            .$tipo.$descripcion.$estadoNuevo.($usuarioId ?? ''));
+    /** JSON de todos los campos en orden fijo: el separador evita que un texto se corra al campo vecino. */
+    private static function hash(EntradaBitacora $entrada): string
+    {
+        return hash('sha256', json_encode([
+            $entrada->hash_anterior,
+            $entrada->secuencia,
+            $entrada->fecha_hora->copy()->utc()->format('Y-m-d\TH:i:s\Z'),
+            $entrada->tipo,
+            $entrada->descripcion,
+            $entrada->estado_anterior,
+            $entrada->estado_nuevo,
+            $entrada->usuario['usuario_id'] ?? null,
+            $entrada->usuario['nombre'] ?? null,
+            $entrada->usuario['rol'] ?? null,
+            $entrada->alerta_id,
+        ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
     }
 
     /**
@@ -80,16 +86,7 @@ class BitacoraService
 
         foreach (EntradaBitacora::orderBy('secuencia')->cursor() as $entrada) {
             $entradas++;
-            $calculado = self::hash(
-                $hashAnterior,
-                $entrada->fecha_hora,
-                $entrada->tipo,
-                $entrada->descripcion,
-                $entrada->estado_nuevo,
-                $entrada->usuario['usuario_id'] ?? null,
-            );
-
-            if ($entrada->secuencia !== $esperada || $entrada->hash_anterior !== $hashAnterior || $entrada->hash !== $calculado) {
+            if ($entrada->secuencia !== $esperada || $entrada->hash_anterior !== $hashAnterior || $entrada->hash !== self::hash($entrada)) {
                 return ['entradas' => $entradas, 'rota' => $entrada];
             }
 
