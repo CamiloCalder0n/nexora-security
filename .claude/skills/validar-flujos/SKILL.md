@@ -29,12 +29,14 @@ Luz verde = las tres capas en verde en la misma versión del código.
 
 ```bash
 docker compose up -d                      # app, worker, scheduler, pgsql, mongo, redis
-docker compose exec app php artisan migrate:fresh --seed
-docker compose exec app php artisan nexora:mongo-indices
+docker compose exec app php artisan migrate               # nunca migrate:fresh: borra lo que haya en la base
+docker compose exec app php artisan nexora:mongo-instalar   # índices y validador de Mongo (desde #5)
 cd agente && source .venv/bin/activate    # si la rama toca el agente
 ```
 
 Usar la base de **desarrollo**, nunca la de producción. Los datos de prueba se crean con seeders o factories, o con el propio flujo (el agente mandando eventos, un vigilante cerrando alertas). Nada de datos reales de residentes (Ley 1581).
+
+**Antes del primer flujo, tomar la línea base** (ver Paso 4): sin ella no hay cómo dejar la base como estaba.
 
 ## Paso 2 · Armar la matriz de flujos
 
@@ -62,10 +64,20 @@ Lo que no aplica a la rama se marca `no aplica` con el motivo. No se borra la fi
 
 Los scripts de exploración van al **scratchpad**, no al repo. Si un flujo es **reproducible y determinista**, se convierte en test automatizado dentro del PR, en `tests/Feature/...` o `agente/tests/`, para que no vuelva a romperse.
 
-## Paso 4 · Reporte
+## Paso 4 · Limpieza (obligatoria, salga verde o rojo)
+
+Todo lo que la validación crea o cambia se borra o se restaura al terminar, también si un flujo falla o el script se cae a la mitad. La base local queda igual que antes de empezar: nada de datos de prueba estancados.
+
+1. **Línea base al empezar**: id máximo de cada tabla que se va a tocar en PostgreSQL (`users`, `personal_access_tokens`, `registros_porteria`, `autorizaciones`, `failed_jobs`…), `_id` máximo de cada colección de Mongo (`eventos`, `alertas`, `bitacora`), estado de lo que se va a modificar (cámaras, vínculos de Telegram) y las claves de Redis de caché.
+2. **Al terminar**, en un `finally` (o un context manager), borrar las filas y documentos posteriores a la línea base (hijos antes que padres), restaurar lo modificado y borrar las claves de Redis nuevas, sin tocar las colas.
+3. **Verificar** que no quedó diferencia contra la línea base e incluirlo en el reporte.
+
+Lo que no se hace nunca: `migrate:fresh`, borrar la base o una tabla entera, `FLUSHDB` en Redis, ni tocar datos que existían antes de la línea base. Los tests automáticos que usen servicios reales (Redis, Mongo de desarrollo) también limpian lo que crean.
+
+## Paso 5 · Reporte
 
 ```text
-VALIDATION_RESULT rama=<rama|#pr> flujos=<n> ok=<n> fallas=<n> no_aplica=<n> veredicto=<verde|volver_a_revision>
+VALIDATION_RESULT rama=<rama|#pr> flujos=<n> ok=<n> fallas=<n> no_aplica=<n> limpieza=<ok|pendiente> veredicto=<verde|volver_a_revision>
 
 | # | Familia | Flujo | Esperado | Observado | Resultado |
 | - | ------- | ----- | -------- | --------- | --------- |
@@ -74,7 +86,7 @@ Evidencia: <comandos clave y salidas cortas, sin tokens ni secretos>
 Tests nuevos agregados: <lista o "ninguno">
 ```
 
-- `verde`: todos los flujos `ok` o `no aplica` con motivo.
+- `verde`: todos los flujos `ok` o `no aplica` con motivo, y `limpieza=ok`.
 - `volver_a_revision`: hubo al menos una falla. Se lista qué se corrigió y se vuelve a la capa 1.
 
 En el PR se resume la matriz en una sección **"Validación de flujos"** (familias, cuántos flujos, tests agregados), sin pegar tokens ni datos personales.

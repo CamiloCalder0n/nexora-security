@@ -59,7 +59,7 @@ Correr `/validar-flujos`. Si sale `volver_a_revision`:
 2. Se vuelve al **paso 2**, con dos rondas limpias de `/pr-review`.
 3. Se repite la capa 3 completa.
 
-Solo con `VALIDATION_RESULT ... veredicto=verde` sobre la misma versión que pasó las dos revisiones se sigue al paso 5. Los flujos reproducibles quedan como tests en el PR.
+Solo con `VALIDATION_RESULT ... limpieza=ok veredicto=verde` sobre la misma versión que pasó las dos revisiones se sigue al paso 5: la base local tiene que quedar igual que antes de validar. Los flujos reproducibles quedan como tests en el PR.
 
 ### 5 · Revisión final de Git
 
