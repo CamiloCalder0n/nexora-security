@@ -39,7 +39,6 @@ class CorrelacionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->artisan('nexora:mongo-indices');
         Event::fake([AlertaCreada::class]);
         Carbon::setTestNow(Carbon::parse('2026-11-06 22:30:00', 'America/Bogota'));
 

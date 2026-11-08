@@ -27,7 +27,6 @@ class IngestaAgenteTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->artisan('nexora:mongo-indices');
         Event::fake([EventoRegistrado::class]);
 
         $zona = Zona::factory()->create(['nombre' => 'Parqueadero sótano', 'prioridad_base' => 3]);

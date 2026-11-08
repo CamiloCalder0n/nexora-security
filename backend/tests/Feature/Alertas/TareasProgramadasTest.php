@@ -18,12 +18,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Event;
+use Tests\Concerns\DocumentosMongo;
 use Tests\Concerns\LimpiaMongo;
 use Tests\TestCase;
 
 class TareasProgramadasTest extends TestCase
 {
-    use LimpiaMongo, RefreshDatabase;
+    use DocumentosMongo, LimpiaMongo, RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -106,10 +107,7 @@ class TareasProgramadasTest extends TestCase
 
     private function alerta(int $prioridad, int $minutosAtras, string $estado = 'abierta'): Alerta
     {
-        return Alerta::create([
-            'fecha_hora' => now()->subMinutes($minutosAtras), 'tipo' => 'sin_registro', 'prioridad' => $prioridad,
-            'motivo' => 'Persona sin registro', 'estado' => $estado, 'zona' => ['zona_id' => 1, 'nombre' => 'Parqueadero'],
-        ]);
+        return $this->crearAlerta(['fecha_hora' => now()->subMinutes($minutosAtras), 'prioridad' => $prioridad, 'estado' => $estado]);
     }
 
     public function test_escala_las_de_prioridad_alta_sin_atender_por_mas_de_5_min(): void
