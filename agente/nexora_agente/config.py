@@ -14,6 +14,13 @@ def _persistencia(valor: str) -> tuple[int, int]:
     return minimo, ventana
 
 
+def _retencion(valor: str) -> int:
+    dias = int(valor)
+    if dias < 1:
+        raise ValueError(f"RETENCION_EVIDENCIAS_DIAS inválida: {valor} (mínimo 1; con 0 se borraría toda la evidencia)")
+    return dias
+
+
 @dataclass(frozen=True)
 class Config:
     api_url: str
@@ -28,8 +35,12 @@ class Config:
     heartbeat_seg: float
     timeout_seg: float
     modelo: str
-    cola_db: Path
-    evidencias_dir: Path
+    datos_dir: Path
+    retencion_evidencias_dias: int
+
+    @property
+    def evidencias_dir(self) -> Path:
+        return self.datos_dir / "evidencias"
 
     @classmethod
     def desde_entorno(cls) -> "Config":
@@ -48,6 +59,6 @@ class Config:
             heartbeat_seg=float(os.getenv("HEARTBEAT_SEG", "60")),
             timeout_seg=float(os.getenv("TIMEOUT_SEG", "5")),
             modelo=os.getenv("MODELO", "yolov8n.pt"),
-            cola_db=RAIZ_AGENTE / os.getenv("COLA_DB", "cola.db"),
-            evidencias_dir=RAIZ_AGENTE / "evidencias",
+            datos_dir=RAIZ_AGENTE,
+            retencion_evidencias_dias=_retencion(os.getenv("RETENCION_EVIDENCIAS_DIAS", "30")),
         )

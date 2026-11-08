@@ -50,7 +50,7 @@ def test_429_espera_retry_after_sin_contar_intento(cola):
 
 @pytest.mark.parametrize(
     "respuesta",
-    [Respuesta(503, {}), Respuesta(401, {}), Respuesta(403, {}), Respuesta(404, {}), SinConexion("caído")],
+    [Respuesta(503, {}), Respuesta(500, {}), Respuesta(401, {}), Respuesta(403, {}), Respuesta(404, {}), SinConexion("caído")],
 )
 def test_falla_temporal_queda_en_cola_con_backoff(cola, respuesta):
     espera = Enviador(cola, ClienteFalso(respuesta)).procesar_uno()
@@ -137,3 +137,63 @@ def test_servidor_caido_con_muchos_pendientes_no_se_martilla(tmp_path):
     enviador = Enviador(cola, Caido())
     assert enviador.procesar_uno() == 2  # espera global: no se prueba el siguiente enseguida
     assert len(llamadas) == 1
+
+
+def test_con_el_servidor_caido_la_espera_crece_aunque_lleguen_eventos_nuevos(tmp_path):
+    cola = ColaLocal(tmp_path / "cola.db")
+    respuestas = [Respuesta(503, {})] * 4 + [Respuesta(202, {}), Respuesta(503, {})]
+
+    class Servidor:
+        def enviar_evento(self, payload):
+            return respuestas.pop(0)
+
+    enviador = Enviador(cola, Servidor())
+    esperas = []
+    for _ in range(6):
+        cola.encolar({"uuid": str(uuid.uuid4())})  # siempre hay uno con 0 intentos listo
+        esperas.append(enviador.procesar_uno())
+    assert esperas == [2, 4, 8, 16, 0, 2]  # crece mientras está caído y vuelve a empezar al recuperarse
+
+
+def test_tras_recuperarse_la_espera_vuelve_a_empezar_aunque_el_evento_tenga_muchos_intentos(tmp_path):
+    cola = ColaLocal(tmp_path / "cola.db")
+    viejo = str(uuid.uuid4())
+    cola.encolar({"uuid": viejo})
+    for _ in range(7):
+        cola.posponer(viejo, 0)  # 7 intentos fallidos de una racha anterior
+    assert Enviador(cola, ClienteFalso(Respuesta(503, {}))).procesar_uno() == 2
+
+
+def test_varios_500_seguidos_son_una_caida_y_la_espera_crece(tmp_path):
+    cola = ColaLocal(tmp_path / "cola.db")
+    enviador = Enviador(cola, ClienteFalso(Respuesta(500, {})))
+    esperas = []
+    for _ in range(4):
+        cola.encolar({"uuid": str(uuid.uuid4())})
+        esperas.append(enviador.procesar_uno())
+    assert esperas == [1, 2, 4, 8]  # el primero puede ser del evento; desde el segundo, el backend está caído
+
+
+def test_un_solo_evento_roto_nunca_dispara_la_espera_global(tmp_path):
+    cola = ColaLocal(tmp_path / "cola.db")
+    roto = str(uuid.uuid4())
+    cola.encolar({"uuid": roto})
+    enviador = Enviador(cola, ClienteFalso(Respuesta(500, {})))
+    esperas = []
+    for _ in range(6):
+        esperas.append(enviador.procesar_uno())
+        cola.posponer(roto, 0, contar_intento=False)  # le vuelve a tocar (el reloj avanzó su backoff)
+    assert esperas == [1] * 6  # de noche, sin más tráfico: la detección que llegue no espera 60 s
+
+
+def test_dos_eventos_rotos_que_se_alternan_no_disparan_la_espera_global(tmp_path):
+    cola = ColaLocal(tmp_path / "cola.db")
+    rotos = [str(uuid.uuid4()), str(uuid.uuid4())]
+    for u in rotos:
+        cola.encolar({"uuid": u})
+    enviador = Enviador(cola, ClienteFalso(Respuesta(500, {})))
+    esperas = []
+    for i in range(8):
+        cola.posponer(rotos[i % 2], -1, contar_intento=False)  # le toca al otro roto
+        esperas.append(enviador.procesar_uno())
+    assert esperas[2:] == [1] * 6  # tras la primera vuelta ya no son nuevos: cada uno espera su turno

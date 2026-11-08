@@ -5,7 +5,8 @@ import pytest
 
 from nexora_agente.cliente_api import ClienteApi, CredencialesInvalidas, SinConexion
 from nexora_agente.cola import ColaLocal
-from nexora_agente.enviador import Enviador, latir
+from nexora_agente.enviador import Enviador
+from nexora_agente.heartbeat import latir
 from nexora_agente.evento import ahora_colombia, armar_evento
 from tests import mock_api
 

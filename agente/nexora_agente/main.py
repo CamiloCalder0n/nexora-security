@@ -8,11 +8,14 @@ import time
 from nexora_agente.cliente_api import ClienteApi, CredencialesInvalidas, SinConexion
 from nexora_agente.cola import ColaLocal
 from nexora_agente.config import Config
-from nexora_agente.enviador import Enviador, latir
+from nexora_agente.enviador import Enviador
 from nexora_agente.evento import ahora_colombia, armar_evento
+from nexora_agente.heartbeat import latir
 from nexora_agente.simulador import evento_simulado
 
 log = logging.getLogger("nexora_agente")
+
+LIMPIEZA_EVIDENCIAS_SEG = 24 * 60 * 60
 
 
 def _argumentos() -> argparse.Namespace:
@@ -38,8 +41,9 @@ class Agente:
         self.args = args
         self.config = config
         # Una cola por cámara: cada proceso es independiente y la falla de uno no toca a los demás (HU40).
-        db = config.cola_db
-        self.cola = ColaLocal(db.with_name(f"{db.stem}-cam{args.camara_id}{db.suffix}"))
+        # Las pruebas con --sin-api van a otra cola: si no, la siguiente corrida real las mandaría al backend.
+        sufijo = "-sinapi" if args.sin_api else ""
+        self.cola = ColaLocal(config.datos_dir / f"cola-cam{args.camara_id}{sufijo}.db")
         self.detener = threading.Event()
         self.hilos: list[threading.Thread] = []
         self.ultimo_frame: float | None = None
@@ -132,6 +136,23 @@ class Agente:
             if self.args.mostrar:
                 cv2.destroyAllWindows()
 
+    def arrancar_limpieza(self) -> None:
+        """En todos los modos: al arrancar y luego una vez al día, aunque la cámara no entregue frames (Ley 1581)."""
+        hilo = threading.Thread(target=self.limpiar_evidencias, name="evidencias", daemon=True)
+        hilo.start()
+        self.hilos.append(hilo)
+
+    def limpiar_evidencias(self) -> None:
+        from nexora_agente.evidencia import borrar_vencidas
+
+        dias = self.config.retencion_evidencias_dias
+        while True:
+            borradas = borrar_vencidas(self.config.evidencias_dir, self.args.camara_id, dias)
+            if borradas:
+                log.info("Evidencias de más de %s días borradas: %s", dias, borradas)
+            if self.detener.wait(LIMPIEZA_EVIDENCIAS_SEG):
+                return
+
     def cerrar(self) -> None:
         self.detener.set()
         for hilo in self.hilos:
@@ -146,6 +167,7 @@ def main() -> None:
     args = _argumentos()
     agente = Agente(args, Config.desde_entorno())
     try:
+        agente.arrancar_limpieza()
         if not args.sin_api:
             agente.conectar()
         if args.simular:

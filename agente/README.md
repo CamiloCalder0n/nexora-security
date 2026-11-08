@@ -6,7 +6,7 @@ Corre en el PC del conjunto. Lee el video de una cámara, detecta con YOLOv8 si 
 
 - Solo detecta **que hay** una persona o un vehículo. No reconoce caras, no identifica a nadie y no lee placas.
 - El video no se graba: los frames se procesan en memoria.
-- Cuando hay un evento se guarda **una imagen** en `agente/evidencias/cam<ID>/` en este PC. A la API solo viaja la ruta; la imagen nunca sale del conjunto (Ley 1581).
+- Cuando hay un evento se guarda **una imagen** en `agente/evidencias/cam<ID>/` en este PC. A la API solo viaja la ruta; la imagen nunca sale del conjunto (Ley 1581). Al arrancar, y luego una vez al día, se borran las de más de `RETENCION_EVIDENCIAS_DIAS` (30 por defecto).
 
 ## Cómo decide que hay un evento
 
@@ -50,7 +50,7 @@ python -m nexora_agente --simular --camara-id 1 --cada 15
 |---|---|
 | `--fuente` | ruta `.mp4` (se repite al acabar), índice de webcam o `rtsp://` (reintenta cada 5 s si se cae) |
 | `--camara-id` | id de la cámara en el backend |
-| `--sin-api` | no llama a la API; imprime lo que enviaría y lo deja en la cola |
+| `--sin-api` | no llama a la API; imprime lo que enviaría y lo deja en una cola aparte (`cola-cam<ID>-sinapi.db`) que nunca se manda al backend y se puede borrar |
 | `--mostrar` | ventana con las cajas detectadas |
 | `--simular`, `--cada` | eventos al azar cada N segundos, sin cámara |
 
@@ -72,6 +72,10 @@ Todo evento entra primero a la cola SQLite de su cámara (`agente/cola-cam<ID>.d
 | 422 | lo pasa a `rechazados` y no lo reintenta |
 | 429 | espera lo que diga `Retry-After` |
 | 5xx, sin red u otro código | lo deja y reintenta a los 2, 4, 8… hasta 60 s |
+
+Si el backend está caído (sin red, 502/503/504, o un 500 seguido del 500 de un evento nuevo), el agente deja de intentar con todos y espera 2, 4, 8… hasta 60 s entre intentos. Un 500 de un evento que ya había fallado se toma como problema de ese evento: espera su propio turno (2, 4, 8… 60 s) y los demás siguen saliendo. Por eso, si el backend devuelve 500 toda la noche con una cola atrasada y sin detecciones nuevas, el agente revisa la cola cada segundo (cada evento respeta su propia espera), a lo sumo una petición por segundo por cámara.
+
+Si el corte dura más de 24 h, el backend rechaza esos eventos por viejos (422) y quedan en `rechazados`.
 
 Un evento que falla una y otra vez pasa al final de la fila y no frena a los demás. Por eso, después de un corte, los eventos pueden llegar en otro orden; no importa, porque el backend correlaciona por `fecha_hora`.
 

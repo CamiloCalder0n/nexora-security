@@ -1,6 +1,5 @@
 import logging
 import threading
-from collections.abc import Callable
 
 from nexora_agente.cliente_api import ClienteApi, CredencialesInvalidas, SinConexion
 from nexora_agente.cola import ColaLocal, Pendiente, espera_backoff
@@ -9,9 +8,8 @@ log = logging.getLogger(__name__)
 
 ESPERA_COLA_VACIA_SEG = 1.0
 ESPERA_429_SEG = 5.0
-REVISION_CAMARA_SEG = 5.0
-SERVIDOR_CAIDO = (502, 503, 504)
 ERROR_INESPERADO_SEG = 5.0
+SERVIDOR_CAIDO = (502, 503, 504)
 
 
 class Enviador:
@@ -20,6 +18,11 @@ class Enviador:
     def __init__(self, cola: ColaLocal, cliente: ClienteApi):
         self.cola = cola
         self.cliente = cliente
+        # Caídas del backend seguidas: la espera crece con ellas y no con los intentos de cada evento,
+        # porque siempre hay uno nuevo con 0 intentos en la cola.
+        self._fallas_seguidas = 0
+        # Un 500 puede ser de un evento roto; si justo después también falla uno nuevo, el caído es el backend.
+        self._hubo_500 = False
 
     def procesar_uno(self) -> float:
         """Intenta enviar el siguiente pendiente y devuelve cuántos segundos esperar antes del próximo."""
@@ -29,9 +32,13 @@ class Enviador:
 
         try:
             r = self.cliente.enviar_evento(pendiente.payload)
-        except (SinConexion, CredencialesInvalidas) as e:
-            return self._reintentar_despues(pendiente, f"sin conexión: {e}", falla_global=True)
+        except SinConexion as e:
+            return self._reintentar_despues(pendiente, f"sin conexión: {e}", caido=True)
+        except CredencialesInvalidas as e:
+            return self._reintentar_despues(pendiente, f"login rechazado, revisar AGENTE_EMAIL y AGENTE_PASSWORD: {e}", caido=True)
 
+        if r.status < 500:
+            self._fallas_seguidas, self._hubo_500 = 0, False
         if r.status in (200, 202):
             self.cola.confirmar(pendiente.uuid)
             log.info("Evento %s %s", pendiente.uuid, r.cuerpo.get("data", {}).get("estado", r.status))
@@ -51,17 +58,23 @@ class Enviador:
         # descarta el 422, así que el evento se conserva y se reintenta con espera creciente.
         if r.status != 401 and r.status < 500:
             log.error("Respuesta inesperada %s en /agente/eventos: %s", r.status, r.cuerpo.get("message", ""))
-        # 502/503/504: el servidor está caído o arrancando (deploy en Render): no se insiste con los demás.
-        return self._reintentar_despues(
-            pendiente, f"respuesta {r.status}", falla_global=r.status in SERVIDOR_CAIDO
-        )
+        # 502/503/504: el servidor está caído o arrancando (deploy en Render). Otro 5xx puede ser de este
+        # evento; si el anterior también fue un 5xx y este evento es nuevo (sin intentos), el caído es el
+        # backend. Los eventos que ya fallaron antes (uno o varios rotos) nunca disparan la espera global.
+        caido = r.status in SERVIDOR_CAIDO
+        if r.status >= 500 and not caido:
+            caido = self._hubo_500 and pendiente.intentos == 0
+            self._hubo_500 = True
+        return self._reintentar_despues(pendiente, f"respuesta {r.status}", caido=caido)
 
-    def _reintentar_despues(self, pendiente: Pendiente, motivo: str, falla_global: bool = False) -> float:
+    def _reintentar_despues(self, pendiente: Pendiente, motivo: str, caido: bool = False) -> float:
         espera = espera_backoff(pendiente.intentos + 1)
         self.cola.posponer(pendiente.uuid, espera)
         log.warning("Evento %s queda en cola (%s); reintento en %ss", pendiente.uuid, motivo, espera)
-        if falla_global:
-            return espera  # sin red o sin login: no tiene sentido intentar los demás ya
+        if caido:
+            # No se intenta con los demás hasta que pase la espera global (2, 4, 8… 60 s).
+            self._fallas_seguidas += 1
+            return espera_backoff(self._fallas_seguidas)
         # La falla puede ser solo de este evento: se vuelve a mirar la cola enseguida para que los
         # demás (y los que lleguen) no esperen su backoff (HU21). Mirar SQLite local no cuesta nada.
         return ESPERA_COLA_VACIA_SEG
@@ -75,37 +88,3 @@ class Enviador:
                 log.exception("Error inesperado en el enviador; sigo en %ss", ERROR_INESPERADO_SEG)
                 espera = ERROR_INESPERADO_SEG
             detener.wait(espera)
-
-
-def latir(
-    cliente: ClienteApi,
-    camara_id: int,
-    intervalo: float,
-    detener: threading.Event,
-    camara_viva: Callable[[], bool] = lambda: True,
-) -> None:
-    """Heartbeat de la cámara cada `intervalo` segundos; el backend la marca sin_senal a los 5 min sin él.
-
-    Solo late si la cámara está entregando frames: si el video se cae y el proceso sigue vivo,
-    el backend tiene que enterarse (HU13).
-    """
-    avisado = False
-    while not detener.is_set():
-        if not camara_viva():
-            if not avisado:
-                log.warning("Cámara %s sin frames; no se envía heartbeat hasta que vuelva", camara_id)
-                avisado = True
-            detener.wait(min(intervalo, REVISION_CAMARA_SEG))
-            continue
-        avisado = False
-        try:
-            r = cliente.heartbeat(camara_id)
-            if r.status == 404:
-                log.error("La cámara %s no existe en el backend", camara_id)
-            elif r.status != 204:
-                log.warning("Heartbeat respondió %s", r.status)
-        except (SinConexion, CredencialesInvalidas) as e:
-            log.warning("Heartbeat sin conexión: %s", e)
-        except Exception:
-            log.exception("Error inesperado en el heartbeat")
-        detener.wait(intervalo)

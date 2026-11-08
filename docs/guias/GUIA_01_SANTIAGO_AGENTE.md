@@ -59,7 +59,8 @@ agente/
 │  ├─ captura.py         (OpenCV: .mp4, webcam o RTSP; muestreo a N fps; reinicia el .mp4 al acabar)
 │  ├─ detector.py        (YOLOv8n; devuelve [(clase, confianza, caja)])
 │  ├─ filtro.py          (umbral, persistencia, cooldown → decide si hay evento)
-│  ├─ evidencia.py       (guarda un .jpg local y devuelve la ruta)
+│  ├─ evidencia.py       (guarda un .jpg local y devuelve la ruta; borra las vencidas)
+│  ├─ heartbeat.py       (latido de la cámara cada 60 s si entrega frames)
 │  ├─ cola.py            (SQLite: pendientes y rechazados)
 │  ├─ cliente_api.py     (login, camaras, eventos, heartbeat; modo sin_api)
 │  ├─ simulador.py       (eventos de prueba sin cámara)
@@ -125,7 +126,7 @@ Cuando pasa el filtro, se arma el evento **exactamente** con el formato del cont
 
 ## Paso 4 · Cola local SQLite (seguir funcionando sin internet, HU23)
 
-`cola.py` con un archivo `agente/cola.db`:
+`cola.py` con un archivo por cámara, `agente/cola-cam<ID>.db`:
 - tabla `pendientes(uuid PK, payload TEXT, intentos INT, proximo_intento TEXT, creado_at TEXT)`;
 - tabla `rechazados(uuid, payload, motivo, creado_at)`.
 
