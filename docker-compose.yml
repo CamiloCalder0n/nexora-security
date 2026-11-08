@@ -21,10 +21,13 @@ services:
   worker:
     <<: *php
     command: php artisan queue:work --tries=3 --backoff=5
+    # Si Redis o la BD se caen, queue:work termina con error: Docker lo vuelve a levantar.
+    restart: unless-stopped
 
   scheduler:
     <<: *php
     command: php artisan schedule:work
+    restart: unless-stopped
 
   pgsql:
     image: postgres:16-alpine
