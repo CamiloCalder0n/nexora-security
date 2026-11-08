@@ -21,6 +21,8 @@ class CrearIndicesMongo extends Command
                 [['uuid' => 1], ['name' => 'uuid_unico', 'unique' => true]],
                 [['zona.zona_id' => 1, 'fecha_hora' => -1], ['name' => 'zona_fecha']],
                 [['fecha_hora' => 1], ['name' => 'ttl_365_dias', 'expireAfterSeconds' => self::TTL_EVENTOS_SEG]],
+                // Parcial: solo indexa los pendientes, que casi siempre son pocos (nexora:reencolar-pendientes).
+                [['created_at' => 1], ['name' => 'pendientes', 'partialFilterExpression' => ['resultado' => 'pendiente']]],
             ],
             'alertas' => [
                 [['estado' => 1, 'fecha_hora' => -1], ['name' => 'estado_fecha']],

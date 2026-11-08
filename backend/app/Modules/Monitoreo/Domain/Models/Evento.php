@@ -16,7 +16,7 @@ use MongoDB\Laravel\Eloquent\Model;
 #[Table('eventos')]
 #[Fillable([
     'schema_version', 'uuid', 'fecha_hora', 'tipo_objeto', 'cantidad', 'confianza', 'ruta_evidencia',
-    'resultado', 'explicado', 'camara', 'zona', 'registro_id', 'alerta_id',
+    'resultado', 'explicado', 'camara', 'zona', 'registro_id', 'alerta_id', 'reencolos', 'proximo_reencolo',
 ])]
 class Evento extends Model
 {
@@ -34,6 +34,8 @@ class Evento extends Model
     {
         return [
             'fecha_hora' => 'datetime',
+            'proximo_reencolo' => 'datetime',
+            'reencolos' => 'integer',
             'cantidad' => 'integer',
             'confianza' => 'float',
             'explicado' => 'boolean',

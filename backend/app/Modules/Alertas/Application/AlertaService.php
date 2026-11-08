@@ -35,9 +35,15 @@ class AlertaService
      * Si la zona ya tiene una alerta abierta con un evento dentro de la ventana de silencio, el evento
      * se agrega ahí sin notificar (HU04). Si no, se crea una alerta nueva y se dispara AlertaCreada.
      */
-    public function crearOAgrupar(Evento $evento, Zona $zona, string $regla, ResultadoRegla $resultado): Alerta
+    public function crearOAgrupar(Evento $evento, Zona $zona, string $regla, ResultadoRegla $resultado): ?Alerta
     {
         return $this->enLockDeZona($zona->id, function () use ($evento, $zona, $regla, $resultado) {
+            // Dos jobs del mismo evento (el original lento y su reencolado) pueden llegar aquí: el
+            // segundo, ya dentro del lock, ve que el primero lo resolvió y no hace nada más.
+            if ($evento->refresh()->resultado !== ResultadoEvento::Pendiente) {
+                return $this->alertas->conEvento($evento->id);
+            }
+
             // Reintento: el evento ya quedó en una alerta (aunque ya la hayan atendido o cerrado).
             $previa = $this->alertas->conEvento($evento->id);
             if ($previa !== null) {

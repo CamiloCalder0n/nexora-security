@@ -11,6 +11,8 @@ use App\Modules\Alertas\Domain\Models\EntradaBitacora;
 use App\Modules\Alertas\Domain\Reglas\ReglaDeteccion;
 use App\Modules\Alertas\Domain\Reglas\ResultadoRegla;
 use App\Modules\Identidad\Domain\Rol;
+use App\Modules\Monitoreo\Application\EventoService;
+use App\Modules\Monitoreo\Domain\Events\EventoRegistrado;
 use App\Modules\Monitoreo\Domain\Models\Camara;
 use App\Modules\Monitoreo\Domain\Models\Evento;
 use App\Modules\Monitoreo\Domain\Models\Franja;
@@ -206,6 +208,38 @@ class CorrelacionTest extends TestCase
         $this->assertSame('alerta', $evento->fresh()->resultado->value);
         $this->assertSame(1, EntradaBitacora::where('tipo', 'alerta_creada')->count());
         Event::assertDispatchedTimes(AlertaCreada::class, 2);  // al menos una vez, nunca cero
+    }
+
+    public function test_un_job_duplicado_que_llega_tarde_no_vuelve_a_notificar(): void
+    {
+        $datos = ['uuid' => (string) Str::uuid(), 'camara_id' => $this->camara->id, 'tipo_objeto' => 'persona',
+            'cantidad' => 1, 'confianza' => 0.9, 'fecha_hora' => now()->toIso8601String()];
+        Event::fake([AlertaCreada::class, EventoRegistrado::class]);
+        $this->postJson(route('api.v1.agente.eventos'), $datos)->assertStatus(202);
+        $copiaVieja = Evento::where('uuid', $datos['uuid'])->first();   // como la lee el job reencolado
+        $zona = app(EventoService::class)->zonaDe($copiaVieja);
+
+        app(CorrelacionService::class)->correlacionar($copiaVieja->id);  // el job original
+        $alerta = app(AlertaService::class)->crearOAgrupar(               // el reencolado, que ya pasó el filtro
+            $copiaVieja, $zona, 'sin_registro_en_porteria', ResultadoRegla::alerta('x', 3),
+        );
+
+        $this->assertSame(1, Alerta::count());
+        $this->assertSame(Alerta::sole()->id, $alerta->id);
+        Event::assertDispatchedTimes(AlertaCreada::class, 1);
+    }
+
+    public function test_un_evento_que_perdio_su_job_termina_correlacionado_al_reencolarlo(): void
+    {
+        Event::fake([AlertaCreada::class, EventoRegistrado::class]);  // la ingesta no encola nada: job "perdido"
+        $evento = $this->enviarEvento();
+        $this->assertSame('pendiente', $evento->resultado->value);
+        $evento->forceFill(['created_at' => now()->subMinutes(5)])->save();
+
+        $this->artisan('nexora:reencolar-pendientes')->assertSuccessful();  // listener real, cola sync
+
+        $this->assertSame('alerta', $evento->fresh()->resultado->value);
+        $this->assertSame(1, Alerta::count());
     }
 
     public function test_una_regla_nueva_se_enchufa_sin_tocar_el_motor(): void

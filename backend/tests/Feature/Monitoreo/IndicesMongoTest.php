@@ -32,6 +32,7 @@ class IndicesMongoTest extends TestCase
         $this->assertTrue($eventos['uuid_unico']->isUnique());
         $this->assertSame(365 * 24 * 60 * 60, $eventos['ttl_365_dias']['expireAfterSeconds']);
         $this->assertArrayHasKey('zona_fecha', $eventos);
+        $this->assertSame(['resultado' => 'pendiente'], (array) $eventos['pendientes']['partialFilterExpression']);
         $this->assertArrayHasKey('estado_fecha', $this->indices('alertas'));
         $this->assertArrayHasKey('zona_estado', $this->indices('alertas'));
         $this->assertArrayHasKey('eventos_ids', $this->indices('alertas'));

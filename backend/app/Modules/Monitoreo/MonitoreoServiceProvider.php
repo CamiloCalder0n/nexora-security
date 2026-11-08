@@ -4,6 +4,7 @@ namespace App\Modules\Monitoreo;
 
 use App\Modules\Monitoreo\Infrastructure\Console\CrearIndicesMongo;
 use App\Modules\Monitoreo\Infrastructure\Console\MarcarCamarasSinSenal;
+use App\Modules\Monitoreo\Infrastructure\Console\ReencolarPendientes;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Request;
@@ -28,11 +29,12 @@ class MonitoreoServiceProvider extends ServiceProvider
             ->by('agente:'.($request->user()?->currentAccessToken()?->id ?? $request->ip())));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CrearIndicesMongo::class, MarcarCamarasSinSenal::class]);
+            $this->commands([CrearIndicesMongo::class, MarcarCamarasSinSenal::class, ReencolarPendientes::class]);
         }
 
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule) {
             $schedule->command('nexora:camaras-sin-senal')->everyMinute()->withoutOverlapping();
+            $schedule->command('nexora:reencolar-pendientes')->everyMinute()->withoutOverlapping();
         });
 
         if (! $this->app->routesAreCached()) {
