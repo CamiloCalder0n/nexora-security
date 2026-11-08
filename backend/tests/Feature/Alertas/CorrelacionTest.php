@@ -5,10 +5,10 @@ namespace Tests\Feature\Alertas;
 use App\Models\User;
 use App\Modules\Alertas\Application\AlertaService;
 use App\Modules\Alertas\Application\CorrelacionService;
+use App\Modules\Alertas\Application\Reglas\ReglaDeteccion;
 use App\Modules\Alertas\Domain\Events\AlertaCreada;
 use App\Modules\Alertas\Domain\Models\Alerta;
 use App\Modules\Alertas\Domain\Models\EntradaBitacora;
-use App\Modules\Alertas\Domain\Reglas\ReglaDeteccion;
 use App\Modules\Alertas\Domain\Reglas\ResultadoRegla;
 use App\Modules\Identidad\Domain\Rol;
 use App\Modules\Monitoreo\Application\EventoService;
@@ -271,11 +271,6 @@ class ReglaVehiculosDeNoche implements ReglaDeteccion
     public function nombre(): string
     {
         return 'vehiculos_de_noche';
-    }
-
-    public function aplica(Evento $evento): bool
-    {
-        return true;
     }
 
     public function evaluar(Evento $evento, Zona $zona): ResultadoRegla

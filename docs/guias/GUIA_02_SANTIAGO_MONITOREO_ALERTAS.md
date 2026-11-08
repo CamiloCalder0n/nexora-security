@@ -59,7 +59,7 @@ Rate limit con nombre `agente` (60 por minuto por token) en `AppServiceProvider`
 
 ## Paso 3 · Motor de reglas y correlación
 
-**Reglas enchufables (HU31):** interfaz `Alertas\Domain\Reglas\ReglaDeteccion` con `aplica(Evento): bool` y `evaluar(Evento): ResultadoRegla`. Las reglas se registran con un *tag* del contenedor (`nexora.reglas`): agregar una regla nueva = crear una clase y registrarla, **sin tocar el motor**. Regla inicial: `SinRegistroEnPorteria`.
+**Reglas enchufables (HU31):** interfaz `Alertas\Application\Reglas\ReglaDeteccion` con `evaluar(Evento, Zona): ResultadoRegla`; si la regla no aplica al evento devuelve `ResultadoRegla::sinDecision()` y el motor sigue con la siguiente. Las reglas se listan en `alertas.reglas` (`Modules/Alertas/config.php`): agregar una regla nueva = crear una clase y ponerla en la lista, **sin tocar el motor**. Regla inicial: `SinRegistroEnPorteria`.
 
 **`CorrelacionService`** (lo llama `CorrelacionJob`):
 1. Carga la zona de la cámara (PostgreSQL). Si `! $zona->estaVigilada($evento->fecha_hora)` → `fuera_franja`, fin.

@@ -26,14 +26,15 @@ class CamaraService
     /** Pasa a sin_senal las cámaras que dejaron de latir y avisa a Alertas; devuelve cuántas cayeron. */
     public function marcarSinSenal(): int
     {
-        $caidas = $this->camaras->sinHeartbeatDesde(now()->subMinutes(config('monitoreo.minutos_sin_senal')));
+        $minutos = config('monitoreo.minutos_sin_senal');
+        $caidas = $this->camaras->sinHeartbeatDesde(now()->subMinutes($minutos));
 
         foreach ($caidas as $camara) {
             $camara->estado = EstadoCamara::SinSenal;
             $this->camaras->guardar($camara);
             CamaraSinSenal::dispatch(
                 $camara->id, $camara->nombre, $camara->zona->id, $camara->zona->nombre,
-                $camara->ultima_conexion->toIso8601String(),
+                $camara->ultima_conexion->toIso8601String(), $minutos,
             );
         }
 

@@ -8,7 +8,10 @@ use App\Modules\Monitoreo\Domain\ResultadoEvento;
 use App\Modules\Monitoreo\Infrastructure\Repositories\EventoRepository;
 use App\Modules\Monitoreo\Infrastructure\Repositories\ZonaRepository;
 
-/** Lo que otros módulos (Alertas) pueden hacer con los eventos y sus zonas, sin tocar los modelos directo. */
+/**
+ * Lo que otros módulos (Alertas) pueden hacer con los eventos y sus zonas. Alertas lee el evento
+ * como modelo de lectura y solo lo cambia con estos métodos, cada uno con su resultado.
+ */
 class EventoService
 {
     public function __construct(
@@ -26,8 +29,31 @@ class EventoService
         return $this->zonas->conFranjas($evento->zona['zona_id']);
     }
 
-    public function marcar(Evento $evento, ResultadoEvento $resultado, array $extra = []): void
+    /** Relee el evento: otro job pudo resolverlo mientras este esperaba. */
+    public function siguePendiente(Evento $evento): bool
     {
-        $this->eventos->marcar($evento, $resultado, $extra);
+        return $evento->refresh()->resultado === ResultadoEvento::Pendiente;
+    }
+
+    public function marcarFueraFranja(Evento $evento): void
+    {
+        $this->eventos->marcar($evento, ResultadoEvento::FueraFranja);
+    }
+
+    public function marcarExplicado(Evento $evento, int $registroId): void
+    {
+        $this->eventos->marcar($evento, ResultadoEvento::Explicado, ['explicado' => true, 'registro_id' => $registroId]);
+    }
+
+    /** El evento abrió la alerta. */
+    public function marcarAlerta(Evento $evento, string $alertaId): void
+    {
+        $this->eventos->marcar($evento, ResultadoEvento::Alerta, ['alerta_id' => $alertaId]);
+    }
+
+    /** El evento se agregó a una alerta que ya estaba abierta, sin volver a avisar (HU04). */
+    public function marcarSuprimido(Evento $evento, string $alertaId): void
+    {
+        $this->eventos->marcar($evento, ResultadoEvento::Suprimido, ['alerta_id' => $alertaId]);
     }
 }

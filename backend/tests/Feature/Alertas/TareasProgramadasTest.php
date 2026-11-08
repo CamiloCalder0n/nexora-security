@@ -64,7 +64,7 @@ class TareasProgramadasTest extends TestCase
         $this->artisan('nexora:camaras-sin-senal');
 
         app(AlertaService::class)->alertarCamaraSinSenal(new CamaraSinSenal(
-            $camara->id, $camara->nombre, $camara->zona_id, 'Parqueadero sótano', $camara->ultima_conexion->toIso8601String(),
+            $camara->id, $camara->nombre, $camara->zona_id, 'Parqueadero sótano', $camara->ultima_conexion->toIso8601String(), 5,
         ));
 
         $this->assertSame(1, Alerta::count());
