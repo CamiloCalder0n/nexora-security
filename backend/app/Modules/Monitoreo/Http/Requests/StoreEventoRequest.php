@@ -14,10 +14,19 @@ class StoreEventoRequest extends FormRequest
         return true;
     }
 
+    /** El uuid se guarda en minúsculas: el mismo evento en mayúsculas sigue siendo un duplicado. */
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('uuid'))) {
+            $this->merge(['uuid' => strtolower($this->input('uuid'))]);
+        }
+    }
+
     public function rules(): array
     {
         return [
-            'uuid' => ['required', 'uuid:4'],
+            // Forma canónica (la misma que exige el validador de Mongo): sin llaves ni urn:uuid:.
+            'uuid' => ['required', 'string', 'regex:/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/'],
             // strict: el agente manda JSON con números; ni true ni "5" cuentan como entero.
             'camara_id' => ['required', 'integer:strict', 'exists:camaras,id'],
             'tipo_objeto' => ['required', 'in:persona,vehiculo'],

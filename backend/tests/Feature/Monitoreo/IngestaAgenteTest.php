@@ -89,6 +89,9 @@ class IngestaAgenteTest extends TestCase
         return [
             'uuid que no es v4' => ['uuid', 'a8098c1a-f86e-11da-bd1a-00112444be1e'],
             'uuid ausente' => ['uuid', null],
+            'uuid entre llaves' => ['uuid', '{6f1c2b9e-3a4d-4c55-9e0a-1b2c3d4e5f60}'],
+            'uuid sin guiones' => ['uuid', '6f1c2b9e3a4d4c559e0a1b2c3d4e5f60'],
+            'uuid como urn' => ['uuid', 'urn:uuid:6f1c2b9e-3a4d-4c55-9e0a-1b2c3d4e5f60'],
             'cámara inexistente' => ['camara_id', 999],
             'tipo de objeto raro' => ['tipo_objeto', 'perro'],
             'cantidad cero' => ['cantidad', 0],
@@ -131,6 +134,15 @@ class IngestaAgenteTest extends TestCase
         foreach (['evidencias/cam1/20261106-190440.jpg', 'evidencias/cam12/20261106-190440-1.jpg'] as $ruta) {
             $this->postJson(route('api.v1.agente.eventos'), $this->evento(['ruta_evidencia' => $ruta]))->assertStatus(202);
         }
+    }
+
+    public function test_uuid_en_mayusculas_se_guarda_en_minusculas_y_cuenta_como_duplicado(): void
+    {
+        $this->comoAgente();
+        $datos = $this->evento(['uuid' => '6F1C2B9E-3A4D-4C55-9E0A-1B2C3D4E5F60']);
+
+        $this->postJson(route('api.v1.agente.eventos'), $datos)->assertStatus(202)->assertJsonPath('data.uuid', '6f1c2b9e-3a4d-4c55-9e0a-1b2c3d4e5f60');
+        $this->postJson(route('api.v1.agente.eventos'), [...$datos, 'uuid' => strtolower($datos['uuid'])])->assertOk()->assertJsonPath('data.estado', 'duplicado');
     }
 
     public function test_un_salto_de_linea_final_se_recorta_antes_de_guardar(): void
