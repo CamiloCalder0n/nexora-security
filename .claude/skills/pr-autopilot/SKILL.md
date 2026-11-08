@@ -1,8 +1,8 @@
 ---
 name: pr-autopilot
-description: Llevar una rama de Nexora Security desde los commits locales hasta un PR abierto y listo para que el compañero lo apruebe — verificación, dos rondas de /pr-review con arreglos integrados en el commit de cada paso (fixup + autosquash, antes del push), push y apertura del PR sin rastro de IA. Úsala con `/pr-autopilot` en la rama actual o `/pr-autopilot <pr>` para un PR ya abierto que tiene comentarios.
+description: Llevar una rama de Nexora Security desde los commits locales hasta un PR abierto y listo para que el compañero lo apruebe — verificación, tres capas (dos rondas de /pr-review con arreglos integrados en el commit de cada paso y la validación de flujos de /validar-flujos; si la capa 3 falla se vuelve a la 1), push y apertura del PR sin rastro de IA. Úsala con `/pr-autopilot` en la rama actual o `/pr-autopilot <pr>` para un PR ya abierto que tiene comentarios.
 metadata:
-  short-description: Rama → dos revisiones → push → PR
+  short-description: Rama → dos revisiones → validación de flujos → push → PR
 ---
 
 # PR Autopilot · Nexora
@@ -51,7 +51,17 @@ Correr `/pr-review` (modo local). Por cada hallazgo bloqueante o importante (y l
 
 Correr `/pr-review` otra vez sobre el resultado, mirando sobre todo lo que la ronda 1 pudo romper o no vio. Mismo procedimiento de fixup. Si la ronda 2 encuentra bloqueantes o importantes, se corrigen y se hace **otra** ronda; el criterio es **dos rondas seguidas con `veredicto=listo`**, la última sin cambios. Máximo 4 rondas; si no converge, parar y avisar al dueño con la lista pendiente.
 
-### 4 · Revisión final de Git
+### 4 · Capa 3: validación de flujos
+
+Correr `/validar-flujos`. Si sale `volver_a_revision`:
+
+1. Se corrige (fixup en el commit del paso si la rama no está publicada; commit nuevo si ya lo está).
+2. Se vuelve al **paso 2**, con dos rondas limpias de `/pr-review`.
+3. Se repite la capa 3 completa.
+
+Solo con `VALIDATION_RESULT ... veredicto=verde` sobre la misma versión que pasó las dos revisiones se sigue al paso 5. Los flujos reproducibles quedan como tests en el PR.
+
+### 5 · Revisión final de Git
 
 ```bash
 git log origin/main..HEAD --format='%h %an <%ae> | %s%n%b'
@@ -61,7 +71,7 @@ git log origin/main..HEAD --format='%h %an <%ae> | %s%n%b'
 - Conventional Commits en español con clave Jira, claros sobre qué se hizo.
 - Sin `Co-Authored-By`, "Generated with…", emojis de robot ni mención a IA.
 
-### 5 · Push y PR
+### 6 · Push y PR
 
 ```bash
 git push -u origin <rama>
@@ -83,6 +93,10 @@ Cuerpo del PR (en español, corto, sin rastro de IA):
 ...
 ```
 
+## Validación de flujos
+- <n> flujos (camino feliz, bordes, errores, abuso y seguridad, concurrencia, caídas, privacidad): todos en verde
+- Tests agregados a partir de los flujos: ...
+
 ## Toca archivos compartidos
 - ninguno | `docker-compose.yml`: ... (avisado a Cami)
 
@@ -95,8 +109,8 @@ Pedir revisión al compañero: `gh pr edit <n> -R CamiloCalder0n/nexora-security
 ## Salida
 
 ```text
-AUTOPILOT_RESULT rama=<rama> rondas=<n> pr=<url|ninguno> estado=<abierto|bloqueado>
+AUTOPILOT_RESULT rama=<rama> rondas=<n> validaciones=<n> pr=<url|ninguno> estado=<abierto|bloqueado>
 
-| Ronda | Hallazgos | Corregidos | Veredicto |
-| ----- | --------- | ---------- | --------- |
+| Ronda | Capa | Hallazgos | Corregidos | Veredicto |
+| ----- | ---- | --------- | ---------- | --------- |
 ```

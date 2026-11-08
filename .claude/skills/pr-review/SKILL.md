@@ -111,7 +111,7 @@ REVIEW_RESULT rama=<rama|#pr> limpieza=<n> detalle=<n> bloqueantes=<n> veredicto
 Verificación: php artisan test <ok|falla|no aplica> · pint <ok|falla|no aplica> · pytest <ok|falla|no aplica>
 ```
 
-`veredicto=listo` solo si no hay bloqueantes ni importantes **y** las verificaciones pasaron. En el flujo de Santiago hacen falta **dos rondas seguidas** con `listo` (la segunda después de aplicar los arreglos de la primera) antes de hacer push y abrir el PR — ver `/pr-autopilot`.
+`veredicto=listo` solo si no hay bloqueantes ni importantes **y** las verificaciones pasaron. En el flujo de Santiago hacen falta **dos rondas seguidas** con `listo` (la segunda después de aplicar los arreglos de la primera) y después la capa 3, `/validar-flujos`, en verde, antes de hacer push y abrir el PR. Si la capa 3 falla, se vuelve a empezar desde aquí. Ver `/pr-autopilot`.
 
 Para publicar comentarios en un PR (`--comentar`):
 ```bash
