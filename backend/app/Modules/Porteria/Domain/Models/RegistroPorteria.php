@@ -5,13 +5,16 @@ namespace App\Modules\Porteria\Domain\Models;
 use App\Models\User;
 use App\Modules\Monitoreo\Domain\Models\Zona;
 use App\Modules\Porteria\Domain\TipoIngreso;
+use App\Modules\Porteria\Infrastructure\Database\Factories\RegistroPorteriaFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Table;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Table('registros_porteria')]
+#[UseFactory(RegistroPorteriaFactory::class)]
 #[Fillable([
     'tipo_ingreso', 'nombre_visitante', 'documento', 'placa', 'cantidad_personas',
     'unidad_id', 'zona_id', 'registrado_por', 'autorizacion_id', 'fecha_ingreso', 'fecha_salida',

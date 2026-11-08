@@ -2,14 +2,17 @@
 
 namespace App\Modules\Monitoreo\Domain\Models;
 
+use App\Modules\Monitoreo\Infrastructure\Database\Factories\FranjaFactory;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Table;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Table('franjas')]
+#[UseFactory(FranjaFactory::class)]
 #[Fillable(['zona_id', 'dia_semana', 'hora_inicio', 'hora_fin'])]
 class Franja extends Model
 {

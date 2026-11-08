@@ -3,10 +3,12 @@
 namespace App\Modules\Porteria\Domain\Models;
 
 use App\Modules\Porteria\Domain\EstadoAutorizacion;
+use App\Modules\Porteria\Infrastructure\Database\Factories\AutorizacionFactory;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Attributes\Table;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Table('autorizaciones')]
+#[UseFactory(AutorizacionFactory::class)]
 #[Fillable([
     'unidad_id', 'residente_id', 'visitante_nombre', 'visitante_documento', 'placa',
     'valida_desde', 'valida_hasta', 'estado', 'usada_at',

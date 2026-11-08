@@ -9,24 +9,30 @@ use Illuminate\Support\Facades\Hash;
 
 class UsuariosSeeder extends Seeder
 {
+    /** Solo para local: todos con contraseña "password". */
+    private const USUARIOS = [
+        ['admin@nexora.test', 'Marta Rueda', Rol::Admin, '3104567890'],
+        ['vigilante@nexora.test', 'Óscar Peña', Rol::Vigilante, '3157894561'],
+        ['consejo@nexora.test', 'Gustavo Barrera', Rol::Consejo, '3009876543'],
+        ['agente@nexora.test', 'Agente portería', Rol::Agente, null],
+        ['residente@nexora.test', 'Laura Méndez', Rol::Residente, '3201234567'],
+        ['residente2@nexora.test', 'Andrés Castillo', Rol::Residente, '3112223344'],
+        ['residente3@nexora.test', 'Paula Herrera', Rol::Residente, '3185556677'],
+    ];
+
     public function run(): void
     {
-        $nombres = [
-            'admin' => 'Administradora',
-            'vigilante' => 'Vigilante de turno',
-            'residente' => 'Residente de prueba',
-            'consejo' => 'Consejo de administración',
-            'agente' => 'Agente portería',
-        ];
+        $password = Hash::make('password');
 
-        foreach (Rol::cases() as $rol) {
+        foreach (self::USUARIOS as [$email, $nombre, $rol, $telefono]) {
             User::updateOrCreate(
-                ['email' => "{$rol->value}@nexora.test"],
+                ['email' => $email],
                 [
-                    'name' => $nombres[$rol->value],
-                    'password' => Hash::make('password'),
+                    'name' => $nombre,
+                    'password' => $password,
                     'rol' => $rol,
                     'activo' => true,
+                    'telefono' => $telefono,
                     'email_verified_at' => now(),
                 ],
             );
