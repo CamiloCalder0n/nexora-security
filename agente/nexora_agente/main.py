@@ -5,6 +5,7 @@ import logging
 import cv2
 
 from nexora_agente.captura import Captura
+from nexora_agente.cola import ColaLocal
 from nexora_agente.config import Config
 from nexora_agente.detector import Detector
 from nexora_agente.evento import ahora_colombia, armar_evento
@@ -32,6 +33,7 @@ def main() -> None:
     config = Config.desde_entorno()
     detector = Detector(config.modelo, config.umbral_confianza)
     filtro = Filtro(config.persistencia_min, config.persistencia_ventana, config.cooldown_seg)
+    cola = ColaLocal(config.cola_db)
     log.info("Cámara %s · fuente %s · dispositivo %s", args.camara_id, args.fuente, detector.dispositivo)
 
     try:
@@ -42,7 +44,9 @@ def main() -> None:
                 ruta = guardar_evidencia(frame, config.evidencias_dir, args.camara_id, fecha_hora)
                 for h in hallazgos:
                     evento = armar_evento(args.camara_id, h.tipo, h.cantidad, h.confianza, fecha_hora, ruta)
-                    print(json.dumps(evento, ensure_ascii=False), flush=True)
+                    cola.encolar(evento)
+                    if args.sin_api:
+                        print("enviaría:", json.dumps(evento, ensure_ascii=False), flush=True)
             if args.mostrar:
                 cv2.imshow(f"Nexora · cámara {args.camara_id}", detector.dibujar())
                 if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -50,5 +54,7 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
     finally:
+        log.info("Cola local: %s", cola.contar())
+        cola.cerrar()
         if args.mostrar:
             cv2.destroyAllWindows()
