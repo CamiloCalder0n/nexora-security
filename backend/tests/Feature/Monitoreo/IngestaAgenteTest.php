@@ -101,6 +101,15 @@ class IngestaAgenteTest extends TestCase
             'fecha de hace más de 24 h' => ['fecha_hora', fn () => now()->subHours(25)->toIso8601String()],
             'fecha a más de 5 min en el futuro' => ['fecha_hora', fn () => now()->addMinutes(6)->toIso8601String()],
             'ruta de evidencia muy larga' => ['ruta_evidencia', str_repeat('a', 256)],
+            'cantidad booleana' => ['cantidad', true],
+            'cantidad como texto' => ['cantidad', '5'],
+            'confianza como texto' => ['confianza', '0.5'],
+            'cámara como texto' => ['camara_id', '1'],
+            'ruta que sube de carpeta' => ['ruta_evidencia', '../../../../etc/passwd'],
+            'ruta absoluta' => ['ruta_evidencia', '/etc/passwd'],
+            'ruta con carácter nulo' => ['ruta_evidencia', "evidencias/cam1/a\0.jpg"],
+            'ruta con unicode de control' => ['ruta_evidencia', "evidencias/cam1/\u{202E}gpj.exe"],
+            'ruta con html' => ['ruta_evidencia', 'evidencias/<script>.jpg'],
         ];
     }
 
@@ -114,6 +123,25 @@ class IngestaAgenteTest extends TestCase
             ->assertJsonValidationErrors([$campo]);
 
         $this->assertSame(0, Evento::count());
+    }
+
+    public function test_rutas_validas_del_agente(): void
+    {
+        $this->comoAgente();
+
+        foreach (['evidencias/cam1/20261106-190440.jpg', 'evidencias/cam12/20261106-190440-1.jpg'] as $ruta) {
+            $this->postJson(route('api.v1.agente.eventos'), $this->evento(['ruta_evidencia' => $ruta]))->assertStatus(202);
+        }
+    }
+
+    public function test_un_salto_de_linea_final_se_recorta_antes_de_guardar(): void
+    {
+        $this->comoAgente();
+        $datos = $this->evento(['ruta_evidencia' => "evidencias/cam1/a.jpg\n"]);
+
+        $this->postJson(route('api.v1.agente.eventos'), $datos)->assertStatus(202);
+
+        $this->assertSame('evidencias/cam1/a.jpg', Evento::where('uuid', $datos['uuid'])->value('ruta_evidencia'));
     }
 
     public function test_fecha_dentro_del_rango_y_sin_evidencia_es_valida(): void
