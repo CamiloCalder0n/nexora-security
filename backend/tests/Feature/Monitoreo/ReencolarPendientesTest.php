@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Monitoreo;
 
-use App\Modules\Monitoreo\Domain\Events\EventoPendienteReencolado;
 use App\Modules\Monitoreo\Domain\Events\EventoRegistrado;
 use App\Modules\Monitoreo\Domain\Models\Evento;
 use Illuminate\Support\Carbon;
@@ -19,7 +18,7 @@ class ReencolarPendientesTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Event::fake([EventoRegistrado::class, EventoPendienteReencolado::class]);
+        Event::fake([EventoRegistrado::class]);
     }
 
     private function evento(int $minutosAtras, string $resultado = 'pendiente'): Evento
@@ -40,12 +39,11 @@ class ReencolarPendientesTest extends TestCase
 
         $this->artisan('nexora:reencolar-pendientes')->expectsOutputToContain('Eventos reencolados: 1')->assertSuccessful();
 
-        Event::assertDispatchedTimes(EventoPendienteReencolado::class, 1);
-        Event::assertDispatched(EventoPendienteReencolado::class, fn ($e) => $e->eventoId === $perdido->id);
-        Event::assertNotDispatched(EventoRegistrado::class);  // no se cuenta como evento nuevo
+        Event::assertDispatchedTimes(EventoRegistrado::class, 1);
+        Event::assertDispatched(EventoRegistrado::class, fn ($e) => $e->eventoId === $perdido->id);
     }
 
-    public function test_espera_creciente_y_tope_de_reencolados(): void
+    public function test_reencola_cada_pocos_minutos_y_se_detiene_en_el_tope(): void
     {
         $evento = $this->evento(5);
         $corridas = [];
@@ -60,20 +58,8 @@ class ReencolarPendientesTest extends TestCase
         }
         Carbon::setTestNow();
 
-        $this->assertCount(config('monitoreo.max_reencolos'), $corridas);
-        $this->assertSame(config('monitoreo.max_reencolos'), $evento->fresh()->reencolos);
-        $saltos = array_map(fn ($a, $b) => $b - $a, array_slice($corridas, 0, -1), array_slice($corridas, 1));
-        $this->assertSame([4, 8, 16, 32], $saltos);  // espera creciente: 2 × 2^intento minutos
-    }
-
-    public function test_respeta_el_tope_por_corrida(): void
-    {
-        config(['monitoreo.reencolar_por_minuto' => 3]);
-        foreach (range(1, 5) as $_) {
-            $this->evento(5);
-        }
-
-        $this->artisan('nexora:reencolar-pendientes')->expectsOutputToContain('Eventos reencolados: 3');
+        $this->assertSame(range(1, 19, 2), $corridas);  // cada 2 min sin cambios, y no más de 10 veces
+        $this->assertSame(10, $evento->fresh()->reencolos);
     }
 
     public function test_esta_agendado_cada_minuto(): void

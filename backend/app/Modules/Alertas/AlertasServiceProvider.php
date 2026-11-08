@@ -8,7 +8,6 @@ use App\Modules\Alertas\Infrastructure\Console\VerificarBitacora;
 use App\Modules\Alertas\Infrastructure\Listeners\AlertarCamaraSinSenal;
 use App\Modules\Alertas\Infrastructure\Listeners\CorrelacionJob;
 use App\Modules\Monitoreo\Domain\Events\CamaraSinSenal;
-use App\Modules\Monitoreo\Domain\Events\EventoPendienteReencolado;
 use App\Modules\Monitoreo\Domain\Events\EventoRegistrado;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Event;
@@ -30,7 +29,7 @@ class AlertasServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/Infrastructure/Database/Migrations');
         $this->loadViewsFrom(__DIR__.'/Resources/views', 'alertas');
 
-        Event::listen([EventoRegistrado::class, EventoPendienteReencolado::class], CorrelacionJob::class);
+        Event::listen(EventoRegistrado::class, CorrelacionJob::class);
         Event::listen(CamaraSinSenal::class, AlertarCamaraSinSenal::class);
 
         if ($this->app->runningInConsole()) {

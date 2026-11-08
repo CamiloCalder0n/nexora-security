@@ -231,13 +231,14 @@ class CorrelacionTest extends TestCase
 
     public function test_un_evento_que_perdio_su_job_termina_correlacionado_al_reencolarlo(): void
     {
-        Event::fake([AlertaCreada::class, EventoRegistrado::class]);  // la ingesta no encola nada: job "perdido"
-        $evento = $this->enviarEvento();
+        // La ingesta no encola nada: el job se "pierde".
+        $evento = Event::fakeFor(fn () => $this->enviarEvento(), [EventoRegistrado::class]);
         $this->assertSame('pendiente', $evento->resultado->value);
-        $evento->forceFill(['created_at' => now()->subMinutes(5)])->save();
+        Carbon::setTestNow(now()->addMinutes(5));
 
         $this->artisan('nexora:reencolar-pendientes')->assertSuccessful();  // listener real, cola sync
 
+        Carbon::setTestNow();
         $this->assertSame('alerta', $evento->fresh()->resultado->value);
         $this->assertSame(1, Alerta::count());
     }
