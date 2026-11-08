@@ -17,6 +17,7 @@ use App\Modules\Monitoreo\Domain\Models\Camara;
 use App\Modules\Monitoreo\Domain\Models\Evento;
 use App\Modules\Monitoreo\Domain\Models\Franja;
 use App\Modules\Monitoreo\Domain\Models\Zona;
+use App\Modules\Monitoreo\Domain\ResultadoEvento;
 use App\Modules\Porteria\Application\Contracts\ConsultaRegistrosPorteria;
 use App\Modules\Porteria\Domain\Models\RegistroPorteria;
 use Carbon\CarbonInterface;
@@ -253,6 +254,20 @@ class CorrelacionTest extends TestCase
         $this->assertSame('alerta', $persona->resultado->value);
         $this->assertSame('explicado', $vehiculo->resultado->value);
         $this->assertSame(5, $vehiculo->registro_id);
+    }
+
+    public function test_un_job_paralelo_no_pisa_el_resultado_que_ya_dejo_el_otro(): void
+    {
+        $evento = $this->enviarEvento();  // el job original lo dejó en una alerta
+        $copia = Evento::find($evento->id);
+        $copia->resultado = ResultadoEvento::Pendiente;  // el reencolado lo leyó antes
+
+        app(EventoService::class)->marcarExplicado($copia, 77);  // y luego encuentra un registro tardío
+
+        $guardado = $evento->fresh();
+        $this->assertSame('alerta', $guardado->resultado->value);
+        $this->assertNull($guardado->registro_id);
+        $this->assertSame('alerta', $copia->resultado->value);
     }
 
     public function test_un_evento_ya_resuelto_no_se_vuelve_a_correlacionar(): void

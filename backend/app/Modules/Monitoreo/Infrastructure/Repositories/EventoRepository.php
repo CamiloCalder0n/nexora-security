@@ -6,6 +6,7 @@ use App\Modules\Monitoreo\Domain\Models\Evento;
 use App\Modules\Monitoreo\Domain\ResultadoEvento;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use MongoDB\Driver\Exception\BulkWriteException;
 
 class EventoRepository
@@ -53,8 +54,22 @@ class EventoRepository
         return Evento::find($id);
     }
 
+    /**
+     * Resuelve el evento solo si sigue pendiente: si dos jobs del mismo evento (el original y su
+     * reencolado) corren a la vez, el segundo no pisa al primero. Si el segundo ya había agrupado el
+     * evento en una alerta, la alerta lo sigue contando: queda un aviso en el log para revisarlo.
+     */
     public function marcar(Evento $evento, ResultadoEvento $resultado, array $extra = []): void
     {
-        $evento->fill(['resultado' => $resultado, ...$extra])->save();
+        $cambiados = Evento::where('_id', $evento->id)
+            ->where('resultado', ResultadoEvento::Pendiente->value)
+            ->update(['resultado' => $resultado->value, ...$extra]);
+        $evento->refresh();
+
+        if ($cambiados === 0) {
+            Log::warning('Otro job ya había resuelto el evento; no se cambia', [
+                'evento' => $evento->id, 'quedó' => $evento->resultado?->value, 'se pedía' => $resultado->value,
+            ]);
+        }
     }
 }
