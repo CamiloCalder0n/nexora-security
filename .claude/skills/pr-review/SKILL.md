@@ -1,8 +1,8 @@
 ---
 name: pr-review
-description: Revisión en dos pasadas de una rama o PR de Nexora Security antes de publicarlo — pasada 1 limpieza (código basura, duplicado, reutilización improductiva), pasada 2 detalles (contrato del agente, capas hexagonales, dueños de módulos, privacidad Ley 1581, secretos, tests, commits). Úsala con `/pr-review` (rama actual contra main, antes del push) o `/pr-review <número>` (PR ya abierto, por ejemplo el del compañero).
+description: Revisión en cuatro pasadas de una rama o PR de Nexora Security antes de publicarlo — 1 limpieza (código basura, duplicado, reutilización improductiva), 2 bugs (lógica, bordes, concurrencia, fallas), 3 detalles (contrato del agente, dueños, privacidad Ley 1581, secretos, tests, commits), 4 diseño (estructura, capas, trazabilidad, escalabilidad, sobreingeniería). Úsala con `/pr-review` (rama actual contra main, antes del push) o `/pr-review <número>` (PR ya abierto, por ejemplo el del compañero).
 metadata:
-  short-description: Revisar una rama o PR de Nexora en dos pasadas
+  short-description: Revisar una rama o PR de Nexora en cuatro pasadas
 ---
 
 # PR Review · Nexora
@@ -41,7 +41,19 @@ Pregunta en cada archivo cambiado: *¿esto tiene que existir?*
 - Dependencias nuevas en `composer.json` / `requirements.txt` que no se usan.
 - Ineficiencias claras: N+1 en Eloquent, consultas dentro de bucles, cargar colecciones enteras de Mongo para contar.
 
-## Pasada 2 · Detalles (lo que se pudo escapar)
+## Pasada 2 · Bugs (¿hace lo que dice, en todos los casos?)
+
+La corre, igual que la pasada 4, alguien que no escribió el código. Leer cada cambio buscando entradas concretas que den un resultado incorrecto, un 500 o datos inconsistentes. Cada hallazgo lleva su escenario: *con esta entrada / este estado → pasa esto*.
+
+- Lógica: condiciones invertidas, off-by-one, comparaciones estrictas con tipos que cambian (Redis y `.env` devuelven texto), `null` no contemplado, zonas horarias (`America/Bogota` vs UTC), franjas que cruzan la medianoche.
+- Bordes: listas vacías, límites exactos de la validación, valores máximos, cadenas raras (unicode, muy largas), ids que no existen.
+- Concurrencia: dos peticiones o dos workers a la vez (doble creación, carreras entre leer y escribir, locks que vencen a mitad de la operación, `ShouldBeUnique`), idempotencia de jobs y de reintentos.
+- Fallas: qué pasa si Redis, Mongo, PostgreSQL o la API externa fallan a mitad de camino; si la operación queda a medias, si el reintento duplica o pierde algo, si una excepción se traga sin log.
+- Estados: transiciones no permitidas (alerta cerrada que se atiende), recursos inactivos (cámara, zona, usuario) que se usan igual.
+
+Un bug sospechado se confirma con un test que falle antes del arreglo; si no se puede reproducir, se marca `(dudoso)`.
+
+## Pasada 3 · Detalles (lo que se pudo escapar)
 
 **Contrato del agente** (`docs/CONTRATO_API_AGENTE.md`) — si la rama toca `agente/` o `Modules/Monitoreo`:
 - Rutas exactas: `POST /api/v1/agente/login`, `GET /agente/camaras`, `POST /agente/eventos`, `POST /agente/camaras/{id}/heartbeat`.
@@ -49,13 +61,6 @@ Pregunta en cada archivo cambiado: *¿esto tiene que existir?*
 - Códigos: 202 recibido, 200 duplicado, 204 heartbeat, 401, 403, 404, 422, 429 con `Retry-After`. Formato `{ "data": { ... } }`.
 - El agente: 202/200 borra de la cola, 401 relogin, 422 a `rechazados` sin reintentar, 429 espera `Retry-After`, 5xx/sin red backoff 2, 4, 8… máx 60 s.
 - Si el contrato cambió, el `.md` del contrato se actualizó en el mismo PR y se avisó al otro.
-
-**Arquitectura** (ArqSoft y Backend):
-- Capas: Controller → Service (`Application/`) → Repository (`Infrastructure/`) → Model. Nada de lógica de negocio en controllers ni en jobs.
-- Un módulo **no** usa modelos de otro módulo; usa su Service, su puerto (interfaz en `Domain/`) o un evento de Laravel.
-- Validación en Form Requests, salida en API Resources, rutas con nombre (`api.v1.agente.*`).
-- Lo pesado va a cola (Job) y las colas tienen `tries`/`backoff`.
-- PostgreSQL para relacional, MongoDB para eventos/alertas/bitácora, Redis para colas/caché/rate limit. Mongo con `schema_version` y los nombres de campos de BD2.
 
 **Dueños** (regla 4): Cami → `Modules/{Identidad,Porteria,Analitica}`; Santiago → `agente/`, `Modules/{Monitoreo,Alertas}`, Docker de producción. Si el diff toca lo del otro o archivos compartidos (`composer.json`, `bootstrap/`, `config/`, `docker-compose.yml`, `routes/`), el PR lo dice en la descripción.
 
@@ -88,6 +93,25 @@ git log origin/main..HEAD --format='%an <%ae>%n%B' | grep -niE 'claude|anthropic
 
 **Cumplimiento de la guía**: cada paso de la guía de la rama está hecho o el PR dice qué quedó pendiente; las HU que el PR dice cubrir realmente se cumplen.
 
+## Pasada 4 · Diseño (¿está bien construido y no sobra nada?)
+
+La corre alguien que **no** escribió el código (otro revisor o un subagente sin el contexto del autor), leyendo el diff completo y la guía o las HU que cubre.
+
+**Arquitectura** (ArqSoft y Backend):
+- Capas: Controller → Service (`Application/`) → Repository (`Infrastructure/`) → Model. Nada de lógica de negocio en controllers ni en jobs.
+- Un módulo **no** usa modelos de otro módulo; usa su Service, su puerto (interfaz en `Domain/`) o un evento de Laravel.
+- Validación en Form Requests, salida en API Resources, rutas con nombre (`api.v1.agente.*`).
+- Lo pesado va a cola (Job) y las colas tienen `tries`/`backoff`.
+- PostgreSQL para relacional, MongoDB para eventos/alertas/bitácora, Redis para colas/caché/rate limit. Mongo con `schema_version` y los nombres de campos de BD2.
+
+**Estructura y diseño**: clases cohesivas con una responsabilidad clara; nada de métodos largos que mezclan validación, reglas, persistencia y textos (código espagueti); el dominio no depende de modelos Eloquent de otro módulo; los servicios exponen métodos con intención (`marcarExplicado`) y no setters genéricos (`marcar(array $extra)`); la misma regla o constante vive en un solo lugar.
+
+**Sobreingeniería** (se reporta con la misma fuerza que lo que falta): interfaces con una sola implementación que nadie sustituye, métodos que solo reenvían la llamada, configuración que nadie va a cambiar, opciones y comandos sin HU, reimplementar lo que Mongo, PostgreSQL o Laravel ya hacen solos. Pregunta: *¿con la mitad del código se cumple la misma HU?*
+
+**Escalabilidad**: índices para cada consulta que se hace (sobre todo las que corren en cada evento o alerta), consultas acotadas, N+1, trabajo lento fuera de la petición (cola), locks cortos, claves de caché con TTL, crecimiento sin límite (archivos en disco, colecciones sin TTL, colas locales).
+
+**Trazabilidad**: cada función nueva sale de una HU o paso de la guía; los commits llevan la clave Jira correcta (si un commit cubre dos HU, lleva las dos); el PR dice qué HU cubre y qué trabajo técnico de soporte no tiene HU. Lo que no tiene HU ni hace falta para una, sobra.
+
 ## Formato de los hallazgos
 
 Cada hallazgo, en una línea (y así va el comentario en el PR con `--comentar`):
@@ -96,14 +120,14 @@ Cada hallazgo, en una línea (y así va el comentario en el PR con `--comentar`)
 [severidad] [pasada] archivo:línea — qué está mal. Sugerencia: cómo arreglarlo.
 ```
 
-- Severidad: `bloqueante` (rompe contrato, test, seguridad, privacidad, secreto, rastro de IA), `importante` (arquitectura, duplicación clara, falta un test de la guía), `menor` (estilo, nombres, comentario sobrante).
-- Pasada: `limpieza` o `detalle`.
+- Severidad: `bloqueante` (bug con escenario concreto, rompe contrato, test, seguridad, privacidad, secreto, rastro de IA), `importante` (arquitectura, sobreingeniería clara, falta un índice de una consulta frecuente, duplicación clara, falta un test de la guía), `menor` (estilo, nombres, comentario sobrante).
+- Pasada: `limpieza`, `bugs`, `detalle` o `diseño`.
 - Solo hallazgos verificados leyendo el código; si no estás seguro, márcalo `(dudoso)` y explica qué habría que revisar.
 
 ## Resultado
 
 ```text
-REVIEW_RESULT rama=<rama|#pr> limpieza=<n> detalle=<n> bloqueantes=<n> veredicto=<listo|corregir>
+REVIEW_RESULT rama=<rama|#pr> limpieza=<n> bugs=<n> detalle=<n> diseño=<n> bloqueantes=<n> veredicto=<listo|corregir>
 
 | Severidad | Pasada | Archivo:línea | Hallazgo |
 | --------- | ------ | ------------- | -------- |
