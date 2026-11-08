@@ -3,15 +3,27 @@
 namespace App\Modules\Monitoreo;
 
 use App\Modules\Monitoreo\Infrastructure\Console\CrearIndicesMongo;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 class MonitoreoServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        $this->mergeConfigFrom(__DIR__.'/config.php', 'monitoreo');
+    }
+
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/Infrastructure/Database/Migrations');
         $this->loadViewsFrom(__DIR__.'/Resources/views', 'monitoreo');
+
+        // Un agente que se vuelve loco no tumba el backend: 60 eventos por minuto por token → 429.
+        RateLimiter::for('agente', fn (Request $request) => Limit::perMinute(config('monitoreo.eventos_por_minuto'))
+            ->by('agente:'.($request->user()?->currentAccessToken()?->id ?? $request->ip())));
 
         if ($this->app->runningInConsole()) {
             $this->commands([CrearIndicesMongo::class]);
