@@ -2,6 +2,7 @@
 
 namespace App\Modules\Monitoreo;
 
+use App\Modules\Monitoreo\Infrastructure\Console\CrearIndicesMongo;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
@@ -11,6 +12,10 @@ class MonitoreoServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(__DIR__.'/Infrastructure/Database/Migrations');
         $this->loadViewsFrom(__DIR__.'/Resources/views', 'monitoreo');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([CrearIndicesMongo::class]);
+        }
 
         if (! $this->app->routesAreCached()) {
             Route::middleware('web')->group(__DIR__.'/Routes/web.php');
