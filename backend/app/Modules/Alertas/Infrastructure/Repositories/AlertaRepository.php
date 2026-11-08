@@ -56,6 +56,11 @@ class AlertaRepository
             ->exists();
     }
 
+    public function buscar(string $id): ?Alerta
+    {
+        return Alerta::find($id);
+    }
+
     public function crear(array $datos): Alerta
     {
         return Alerta::create($datos);
