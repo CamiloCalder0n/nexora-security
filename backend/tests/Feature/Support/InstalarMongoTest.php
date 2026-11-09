@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature\Monitoreo;
+namespace Tests\Feature\Support;
 
 use App\Modules\Alertas\Domain\Models\EntradaBitacora;
 use App\Modules\Monitoreo\Domain\Models\Evento;
@@ -42,7 +42,7 @@ class InstalarMongoTest extends TestCase
     public function test_crea_las_tres_colecciones_con_validador_estricto_e_indices(): void
     {
         $this->artisan('nexora:mongo-instalar')
-            ->expectsOutputToContain('eventos: validador actualizado')  // LimpiaMongo ya la había creado
+            ->expectsOutputToContain('eventos: validador e índices al día')
             ->assertSuccessful();
         $this->artisan('nexora:mongo-indices')->assertSuccessful();     // alias de las guías
 
@@ -60,6 +60,7 @@ class InstalarMongoTest extends TestCase
         $this->assertArrayHasKey('zona_fecha', $eventos);
         $this->assertSame(['estado_fecha', 'zona_estado', 'eventos_ids'], array_values(array_diff(array_keys($this->indices('alertas')), ['_id_'])));
         $this->assertTrue($this->indices('bitacora')['secuencia_unica']->isUnique());
+        $this->assertArrayHasKey('alerta_tipo', $this->indices('bitacora'));
     }
 
     public function test_a_una_base_vieja_sin_validador_se_lo_agrega(): void
@@ -67,7 +68,7 @@ class InstalarMongoTest extends TestCase
         DB::connection('mongodb')->getDatabase()->drop();
         DB::connection('mongodb')->getDatabase()->createCollection('eventos');  // como la dejaba la versión anterior
 
-        $this->artisan('nexora:mongo-instalar')->expectsOutputToContain('eventos: validador actualizado')->assertSuccessful();
+        $this->artisan('nexora:mongo-instalar')->expectsOutputToContain('eventos: validador e índices al día')->assertSuccessful();
 
         $this->assertSame('strict', $this->info('eventos')['validationLevel']);
     }
@@ -79,119 +80,34 @@ class InstalarMongoTest extends TestCase
         DB::connection('mongodb')->table('eventos')->insert(['uuid' => 'viejo', 'fecha_hora' => now()]);  // forma anterior
 
         $this->artisan('nexora:mongo-instalar')
-            ->expectsOutputToContain('eventos: 1 documentos NO cumplen el esquema nuevo')
+            ->expectsOutputToContain('eventos: 1 documentos NO cumplen el esquema')
             ->assertFailed();
 
         $this->assertArrayNotHasKey('validator', $this->info('eventos'));   // la app sigue pudiendo actualizarlos
         $this->assertArrayNotHasKey('uuid_unico', $this->indices('eventos'));
 
-        $this->artisan('nexora:mongo-instalar', ['--forzar' => true])->assertSuccessful();
+        $this->artisan('nexora:mongo-instalar', ['--forzar' => true])
+            ->expectsOutputToContain('eventos: 1 documentos NO cumplen el esquema')  // avisa aunque lo fuerce
+            ->assertSuccessful();
         $this->assertSame('strict', $this->info('eventos')['validationLevel']);
     }
 
-    public function test_ajusta_el_ttl_sin_borrar_el_indice(): void
-    {
-        DB::connection('mongodb')->getDatabase()->command(['collMod' => 'eventos', 'index' => ['name' => 'ttl_365_dias', 'expireAfterSeconds' => 60]]);
-
-        $this->artisan('nexora:mongo-instalar')->expectsOutputToContain('ttl_365_dias (ttl)')->assertSuccessful();
-
-        $this->assertSame(365 * 24 * 60 * 60, $this->indices('eventos')['ttl_365_dias']['expireAfterSeconds']);
-    }
-
-    public function test_nunca_borra_solo_un_indice_unico_que_cambio(): void
+    public function test_un_indice_que_cambio_no_se_borra_solo_y_el_comando_falla(): void
     {
         $eventos = DB::connection('mongodb')->getCollection('eventos');
         $eventos->dropIndex('uuid_unico');
         $eventos->createIndex(['uuid' => 1], ['name' => 'uuid_unico']);  // quedó sin unique
+        $eventos->dropIndex('ttl_365_dias');  // otro índice de la misma colección que falta
+        DB::connection('mongodb')->getCollection('alertas')->dropIndex('zona_estado');  // y uno de otra colección
 
         $this->artisan('nexora:mongo-instalar')
-            ->expectsOutputToContain('el índice único uuid_unico cambió (unique)')
+            ->expectsOutputToContain('eventos.uuid_unico: MongoDB rechazó el cambio')
+            ->expectsOutputToContain('alertas: validador e índices al día')  // las demás se instalan igual
             ->assertFailed();
 
-        $this->assertArrayHasKey('uuid_unico', $this->indices('eventos'));  // sigue ahí, no se tocó
-    }
-
-    public function test_avisa_si_las_mismas_claves_tienen_otro_nombre(): void
-    {
-        $eventos = DB::connection('mongodb')->getCollection('eventos');
-        $eventos->dropIndex('uuid_unico');
-        $eventos->createIndex(['uuid' => 1], ['name' => 'uuid_1', 'unique' => true]);
-
-        $this->artisan('nexora:mongo-instalar')
-            ->expectsOutputToContain('ya existe el índice uuid_1 con las claves de uuid_unico')
-            ->assertFailed();
-
-        $this->assertTrue($this->indices('eventos')['uuid_1']->isUnique());
-    }
-
-    public function test_el_orden_de_las_claves_cuenta(): void
-    {
-        $eventos = DB::connection('mongodb')->getCollection('eventos');
-        // Otro índice legítimo con las mismas claves en otro orden (p. ej. uno de reportes): no es conflicto.
-        $eventos->createIndex(['fecha_hora' => -1, 'zona.zona_id' => 1], ['name' => 'fecha_zona_reportes']);
-        $this->artisan('nexora:mongo-instalar')->assertSuccessful();
-
-        // zona_fecha con las claves al revés sí se detecta y se rehace bien.
-        $eventos->dropIndex('fecha_zona_reportes');
-        $eventos->dropIndex('zona_fecha');
-        $eventos->createIndex(['fecha_hora' => -1, 'zona.zona_id' => 1], ['name' => 'zona_fecha']);
-        $this->artisan('nexora:mongo-instalar')->expectsOutputToContain('zona_fecha (rehacer)')->assertSuccessful();
-        $this->assertSame(['zona.zona_id', 'fecha_hora'], array_keys($this->indices('eventos')['zona_fecha']->getKey()));
-    }
-
-    public function test_no_rehace_si_otro_indice_ya_tiene_las_claves_correctas(): void
-    {
-        $eventos = DB::connection('mongodb')->getCollection('eventos');
-        $eventos->dropIndex('zona_fecha');
-        $eventos->createIndex(['zona.zona_id' => 1, 'fecha_hora' => -1], ['name' => 'zf_manual']);
-        $eventos->createIndex(['fecha_hora' => -1], ['name' => 'zona_fecha']);  // nombre bien, claves mal
-
-        $this->artisan('nexora:mongo-instalar')
-            ->expectsOutputToContain('ya existe el índice zf_manual con las claves de zona_fecha')
-            ->doesntExpectOutputToContain('find({$nor')
-            ->assertFailed();
-
-        $this->assertArrayHasKey('zona_fecha', $this->indices('eventos'));  // no se borró nada
-        $this->assertArrayHasKey('zf_manual', $this->indices('eventos'));
-    }
-
-    public function test_un_filtro_parcial_equivalente_no_se_rehace(): void
-    {
-        $eventos = DB::connection('mongodb')->getCollection('eventos');
-        $eventos->dropIndex('pendientes');
-        $eventos->createIndex(['created_at' => 1], ['name' => 'pendientes', 'partialFilterExpression' => ['resultado' => ['$eq' => 'pendiente']]]);
-
-        $this->artisan('nexora:mongo-instalar')->doesntExpectOutputToContain('pendientes (rehacer)')->assertSuccessful();
-    }
-
-    public function test_con_un_conflicto_no_toca_ninguna_coleccion(): void
-    {
-        DB::connection('mongodb')->getDatabase()->drop();
-        $base = DB::connection('mongodb')->getDatabase();
-        $base->createCollection('eventos');
-        $base->createCollection('bitacora');
-        // Dos entradas con la misma secuencia: el índice único de bitácora no se puede crear.
-        $entrada = ['secuencia' => 1, 'fecha_hora' => now(), 'tipo' => 'alerta_creada', 'descripcion' => 'x', 'estado_nuevo' => 'abierta',
-            'usuario' => ['usuario_id' => null, 'nombre' => 'Sistema', 'rol' => 'sistema'], 'hash_anterior' => str_repeat('0', 64), 'hash' => str_repeat('a', 64), 'schema_version' => 1];
-        DB::connection('mongodb')->table('bitacora')->insert([$entrada, $entrada]);
-
-        $this->artisan('nexora:mongo-instalar')
-            ->expectsOutputToContain('hay documentos repetidos en secuencia')
-            ->assertFailed();
-
-        $this->assertArrayNotHasKey('validator', $this->info('eventos'));          // ni la primera colección cambió
-        $this->assertNotContains('alertas', iterator_to_array($base->listCollectionNames()));
-    }
-
-    public function test_rehace_un_indice_no_unico_que_cambio(): void
-    {
-        $eventos = DB::connection('mongodb')->getCollection('eventos');
-        $eventos->dropIndex('pendientes');
-        $eventos->createIndex(['created_at' => 1], ['name' => 'pendientes']);  // sin el filtro parcial
-
-        $this->artisan('nexora:mongo-instalar')->expectsOutputToContain('pendientes (rehacer)')->assertSuccessful();
-
-        $this->assertSame(['resultado' => 'pendiente'], (array) $this->indices('eventos')['pendientes']['partialFilterExpression']);
+        $this->assertArrayHasKey('ttl_365_dias', $this->indices('eventos'));  // el resto de los índices de eventos sí se crean
+        $this->assertArrayHasKey('zona_estado', $this->indices('alertas'));   // y los de las demás colecciones
+        $this->assertFalse($this->indices('eventos')['uuid_unico']->isUnique());  // el que cambió no se tocó: se arregla a mano
     }
 
     public function test_el_uuid_del_evento_no_se_repite(): void
