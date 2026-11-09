@@ -24,6 +24,12 @@ class Alerta extends Model
 
     public const MAX_EVIDENCIAS = 3;
 
+    public const MAX_OBSERVACION = 2000;
+
+    public const PRIORIDAD_MIN = 1;
+
+    public const PRIORIDAD_MAX = 3;
+
     protected $attributes = [
         'schema_version' => self::SCHEMA_VERSION,
         'estado' => 'abierta',

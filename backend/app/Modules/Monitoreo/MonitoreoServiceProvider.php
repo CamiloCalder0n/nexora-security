@@ -2,9 +2,9 @@
 
 namespace App\Modules\Monitoreo;
 
-use App\Modules\Monitoreo\Infrastructure\Console\CrearIndicesMongo;
 use App\Modules\Monitoreo\Infrastructure\Console\MarcarCamarasSinSenal;
 use App\Modules\Monitoreo\Infrastructure\Console\ReencolarPendientes;
+use App\Modules\Monitoreo\Infrastructure\Mongo\ColeccionEventos;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Request;
@@ -17,6 +17,7 @@ class MonitoreoServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/config.php', 'monitoreo');
+        $this->app->tag([ColeccionEventos::class], 'nexora.colecciones_mongo');
     }
 
     public function boot(): void
@@ -29,7 +30,7 @@ class MonitoreoServiceProvider extends ServiceProvider
             ->by('agente:'.($request->user()?->currentAccessToken()?->id ?? $request->ip())));
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CrearIndicesMongo::class, MarcarCamarasSinSenal::class, ReencolarPendientes::class]);
+            $this->commands([MarcarCamarasSinSenal::class, ReencolarPendientes::class]);
         }
 
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule) {

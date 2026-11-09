@@ -122,7 +122,7 @@ class AlertaService
             $alerta = $this->alertas->crear([
                 'fecha_hora' => now(),
                 'tipo' => TipoAlerta::CamaraSinSenal,
-                'prioridad' => config('alertas.prioridad_alta'),
+                'prioridad' => Alerta::PRIORIDAD_MAX,
                 'motivo' => $motivo,
                 'regla' => 'camara_sin_heartbeat',
                 'camara' => ['camara_id' => $caida->camaraId, 'nombre' => $caida->camaraNombre],
@@ -141,7 +141,7 @@ class AlertaService
         $minutos = config('alertas.minutos_escalar');
         $escaladas = 0;
 
-        foreach ($this->alertas->paraEscalar(config('alertas.prioridad_alta'), now()->subMinutes($minutos)) as $candidata) {
+        foreach ($this->alertas->paraEscalar(Alerta::PRIORIDAD_MAX, now()->subMinutes($minutos)) as $candidata) {
             $escaladas += $this->enLockDeZona($candidata->zona['zona_id'], function () use ($candidata, $minutos) {
                 // Se relee dentro del lock: la pudieron atender mientras se recorría la lista.
                 $alerta = $candidata->fresh();
@@ -207,6 +207,11 @@ class AlertaService
         if ($tipo === Clasificacion::Incidente && $observacion === null) {
             throw ValidationException::withMessages([
                 'observacion' => 'Un incidente necesita una observación de lo que pasó.',
+            ]);
+        }
+        if ($observacion !== null && mb_strlen($observacion) > Alerta::MAX_OBSERVACION) {
+            throw ValidationException::withMessages([
+                'observacion' => 'La observación no puede pasar de '.Alerta::MAX_OBSERVACION.' caracteres.',
             ]);
         }
 

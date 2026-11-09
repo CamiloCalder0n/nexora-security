@@ -72,7 +72,7 @@ Este archivo lo respetan los dos lados. Si alguien necesita cambiarlo, lo avisa 
 
 | Campo | Regla |
 |---|---|
-| `uuid` | obligatorio, UUID v4, lo genera el agente; sirve para no duplicar |
+| `uuid` | obligatorio, UUID v4 en forma canónica `8-4-4-4-12` (sin llaves ni `urn:`), lo genera el agente; sirve para no duplicar. Se guarda y se responde en minúsculas |
 | `camara_id` | obligatorio, entero JSON (no texto), existe en `camaras` |
 | `tipo_objeto` | obligatorio: `persona` o `vehiculo` |
 | `cantidad` | obligatorio, entero JSON 1–50 (ni `true` ni `"5"`) |

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Alertas\Application\Reglas;
 
+use App\Modules\Alertas\Domain\Models\Alerta;
 use App\Modules\Alertas\Domain\Reglas\ResultadoRegla;
 use App\Modules\Monitoreo\Domain\Models\Evento;
 use App\Modules\Monitoreo\Domain\Models\Zona;
@@ -30,7 +31,8 @@ class SinRegistroEnPorteria implements ReglaDeteccion
             return ResultadoRegla::explicado($registro->id);
         }
 
-        return ResultadoRegla::alerta($this->motivo($evento, $zona), $zona->prioridad_base);
+        // La prioridad de la zona se acota a 1–3: una zona mal configurada no puede tumbar la alerta.
+        return ResultadoRegla::alerta($this->motivo($evento, $zona), max(Alerta::PRIORIDAD_MIN, min(Alerta::PRIORIDAD_MAX, $zona->prioridad_base)));
     }
 
     /** Ej.: "Persona en Parqueadero sótano a las 22:30 sin registro en portería (ventana ±10 min)" (HU38). */

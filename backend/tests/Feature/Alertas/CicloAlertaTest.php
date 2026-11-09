@@ -11,12 +11,13 @@ use App\Modules\Alertas\Domain\TransicionInvalida;
 use App\Modules\Identidad\Domain\Rol;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Tests\Concerns\DocumentosMongo;
 use Tests\Concerns\LimpiaMongo;
 use Tests\TestCase;
 
 class CicloAlertaTest extends TestCase
 {
-    use LimpiaMongo, RefreshDatabase;
+    use DocumentosMongo, LimpiaMongo, RefreshDatabase;
 
     private AlertaService $servicio;
 
@@ -25,17 +26,13 @@ class CicloAlertaTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->artisan('nexora:mongo-indices');
         $this->servicio = app(AlertaService::class);
         $this->vigilante = User::factory()->conRol(Rol::Vigilante)->create(['name' => 'Pedro Celador']);
     }
 
     private function alerta(): Alerta
     {
-        return Alerta::create([
-            'fecha_hora' => now(), 'tipo' => 'sin_registro', 'prioridad' => 3, 'motivo' => 'Persona sin registro',
-            'zona' => ['zona_id' => 1, 'nombre' => 'Parqueadero'],
-        ]);
+        return $this->crearAlerta();
     }
 
     public function test_atender_guarda_quien_y_cuando_y_va_a_la_bitacora(): void
@@ -81,6 +78,12 @@ class CicloAlertaTest extends TestCase
     {
         $this->expectException(ValidationException::class);
         $this->servicio->cerrar($this->alerta(), $this->vigilante, 'incidente', '  ');
+    }
+
+    public function test_observacion_de_mas_de_2000_caracteres_es_422(): void
+    {
+        $this->expectException(ValidationException::class);
+        $this->servicio->cerrar($this->alerta(), $this->vigilante, 'incidente', str_repeat('a', 2001));
     }
 
     public function test_cerrar_como_falsa_alarma(): void

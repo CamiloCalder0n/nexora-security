@@ -7,13 +7,13 @@ use App\Modules\Monitoreo\Domain\Models\Evento;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Str;
+use Tests\Concerns\DocumentosMongo;
 use Tests\Concerns\LimpiaMongo;
 use Tests\TestCase;
 
 class ReencolarPendientesTest extends TestCase
 {
-    use LimpiaMongo;
+    use DocumentosMongo, LimpiaMongo;
 
     protected function setUp(): void
     {
@@ -24,7 +24,7 @@ class ReencolarPendientesTest extends TestCase
     private function evento(int $minutosAtras, string $resultado = 'pendiente'): Evento
     {
         Carbon::setTestNow(now()->subMinutes($minutosAtras));
-        $evento = Evento::create(['uuid' => (string) Str::uuid(), 'fecha_hora' => now(), 'tipo_objeto' => 'persona', 'resultado' => $resultado]);
+        $evento = $this->crearEvento(['resultado' => $resultado]);
         Carbon::setTestNow();
 
         return $evento;

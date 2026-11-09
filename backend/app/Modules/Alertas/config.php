@@ -9,7 +9,6 @@ return [
         SinRegistroEnPorteria::class,
     ],
 
-    // Escalamiento (HU12): las de esta prioridad suben un nivel cada N minutos sin atender.
-    'prioridad_alta' => 3,
+    // Escalamiento (HU12): las de prioridad máxima suben un nivel cada N minutos sin atender.
     'minutos_escalar' => (int) env('ALERTAS_MINUTOS_ESCALAR', 5),
 ];

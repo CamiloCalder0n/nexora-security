@@ -2,6 +2,7 @@
 
 namespace App\Modules\Monitoreo\Http\Requests;
 
+use App\Modules\Monitoreo\Domain\Models\Evento;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Reglas de `POST /agente/eventos` según docs/CONTRATO_API_AGENTE.md. */
@@ -14,10 +15,18 @@ class StoreEventoRequest extends FormRequest
         return true;
     }
 
+    /** El uuid se guarda en minúsculas: el mismo evento en mayúsculas sigue siendo un duplicado. */
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('uuid'))) {
+            $this->merge(['uuid' => strtolower($this->input('uuid'))]);
+        }
+    }
+
     public function rules(): array
     {
         return [
-            'uuid' => ['required', 'uuid:4'],
+            'uuid' => ['required', 'string', 'regex:/^'.Evento::PATRON_UUID.'\z/'],
             // strict: el agente manda JSON con números; ni true ni "5" cuentan como entero.
             'camara_id' => ['required', 'integer:strict', 'exists:camaras,id'],
             'tipo_objeto' => ['required', 'in:persona,vehiculo'],

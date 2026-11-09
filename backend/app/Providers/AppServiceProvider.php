@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\Mongo\InstalarMongo;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +20,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        if ($this->app->runningInConsole()) {
+            $this->commands([InstalarMongo::class]);  // esquema de MongoDB de todos los módulos
+        }
     }
 }

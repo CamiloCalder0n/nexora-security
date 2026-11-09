@@ -7,6 +7,8 @@ use App\Modules\Alertas\Infrastructure\Console\EscalarAlertas;
 use App\Modules\Alertas\Infrastructure\Console\VerificarBitacora;
 use App\Modules\Alertas\Infrastructure\Listeners\AlertarCamaraSinSenal;
 use App\Modules\Alertas\Infrastructure\Listeners\CorrelacionJob;
+use App\Modules\Alertas\Infrastructure\Mongo\ColeccionAlertas;
+use App\Modules\Alertas\Infrastructure\Mongo\ColeccionBitacora;
 use App\Modules\Monitoreo\Domain\Events\CamaraSinSenal;
 use App\Modules\Monitoreo\Domain\Events\EventoRegistrado;
 use Illuminate\Console\Scheduling\Schedule;
@@ -19,6 +21,7 @@ class AlertasServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/config.php', 'alertas');
+        $this->app->tag([ColeccionAlertas::class, ColeccionBitacora::class], 'nexora.colecciones_mongo');
         $this->app->bind(MotorReglas::class, fn ($app) => new MotorReglas(
             array_map(fn (string $regla) => $app->make($regla), config('alertas.reglas')),
         ));
