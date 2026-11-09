@@ -33,6 +33,32 @@ class ResidenteService
         return $this->unidades->todas();
     }
 
+    /** Unidades del residente ordenadas por torre y número, como [id => etiqueta]. */
+    public function opcionesUnidadesDe(Residente $residente): array
+    {
+        return $this->unidades->deResidente($residente)->pluck('etiqueta', 'id')->all();
+    }
+
+    /**
+     * Opciones del formulario de autorización del administrador: los residentes que tienen unidad,
+     * todas las unidades y, por residente, los ids de sus unidades (para filtrar el selector).
+     *
+     * @return array{residentes: array<int, string>, unidades: array<int, string>, unidadesPorResidente: array<int, list<int>>}
+     */
+    public function opcionesParaAutorizar(): array
+    {
+        $unidades = $this->unidades->todasConResidentes();
+        $residentes = $unidades->flatMap->residentes->unique('id')->sortBy('nombre');
+
+        return [
+            'residentes' => $residentes->mapWithKeys(fn (Residente $r) => [$r->id => "{$r->nombre} ({$r->documento})"])->all(),
+            'unidades' => $unidades->pluck('etiqueta', 'id')->all(),
+            'unidadesPorResidente' => $residentes->mapWithKeys(fn (Residente $r) => [
+                $r->id => $unidades->filter(fn ($u) => $u->residentes->contains('id', $r->id))->pluck('id')->values()->all(),
+            ])->all(),
+        ];
+    }
+
     /**
      * $datos['unidades'] = [unidad_id, ...] y opcional $datos['titular_de'] = [unidad_id, ...].
      * Un residente siempre queda con al menos una unidad.

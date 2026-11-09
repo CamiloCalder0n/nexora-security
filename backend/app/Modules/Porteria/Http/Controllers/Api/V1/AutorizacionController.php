@@ -7,11 +7,11 @@ use App\Modules\Identidad\Domain\Rol;
 use App\Modules\Porteria\Application\AutorizacionService;
 use App\Modules\Porteria\Application\ResidenteService;
 use App\Modules\Porteria\Domain\Models\Autorizacion;
+use App\Modules\Porteria\Http\Requests\FiltroAutorizacionesRequest;
 use App\Modules\Porteria\Http\Requests\StoreAutorizacionRequest;
 use App\Modules\Porteria\Http\Requests\UpdateAutorizacionRequest;
 use App\Modules\Porteria\Http\Resources\AutorizacionResource;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
@@ -23,12 +23,12 @@ class AutorizacionController extends Controller
         private readonly ResidenteService $residentes,
     ) {}
 
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(FiltroAutorizacionesRequest $request): AnonymousResourceCollection
     {
         Gate::authorize('viewAny', Autorizacion::class);
 
         $usuario = $request->user();
-        $filtros = $request->only('search', 'estado', 'unidad_id');
+        $filtros = $request->filtros();
 
         $pagina = match ($usuario->rol) {
             Rol::Admin => $this->autorizaciones->listar($filtros),

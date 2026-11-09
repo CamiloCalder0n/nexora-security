@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Identidad\Http\Middleware\CerrarSesionInactiva;
 use App\Modules\Identidad\Http\Middleware\EnsureRol;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -15,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+        // El panel llama al API de Alertas (atender y cerrar) con su sesión y su token CSRF.
+        $middleware->statefulApi();
+        $middleware->appendToGroup('web', CerrarSesionInactiva::class);
+        $middleware->appendToGroup('api', CerrarSesionInactiva::class);
         $middleware->alias([
             'rol' => EnsureRol::class,
         ]);

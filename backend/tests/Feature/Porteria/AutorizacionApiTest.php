@@ -202,4 +202,13 @@ class AutorizacionApiTest extends TestCase
 
         $this->getJson(route('api.v1.porteria.autorizaciones.index'))->assertForbidden();
     }
+
+    public function test_filtro_invalido_es_422(): void
+    {
+        Sanctum::actingAs(User::factory()->conRol(Rol::Admin)->create());
+
+        $this->getJson(route('api.v1.porteria.autorizaciones.index', ['estado' => 'inventado']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('estado');
+    }
 }

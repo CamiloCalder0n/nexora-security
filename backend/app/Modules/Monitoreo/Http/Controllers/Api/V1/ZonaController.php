@@ -5,11 +5,11 @@ namespace App\Modules\Monitoreo\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Modules\Monitoreo\Application\ZonaService;
 use App\Modules\Monitoreo\Domain\Models\Zona;
+use App\Modules\Monitoreo\Http\Requests\FiltroZonasRequest;
 use App\Modules\Monitoreo\Http\Requests\StoreZonaRequest;
 use App\Modules\Monitoreo\Http\Requests\UpdateZonaRequest;
 use App\Modules\Monitoreo\Http\Resources\ZonaResource;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
@@ -17,9 +17,9 @@ class ZonaController extends Controller
 {
     public function __construct(private readonly ZonaService $zonas) {}
 
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(FiltroZonasRequest $request): AnonymousResourceCollection
     {
-        return ZonaResource::collection($this->zonas->listar($request->only('search', 'tipo', 'activa')));
+        return ZonaResource::collection($this->zonas->listar($request->validated()));
     }
 
     public function store(StoreZonaRequest $request): JsonResponse
