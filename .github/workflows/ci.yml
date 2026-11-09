@@ -16,18 +16,27 @@ concurrency:
 jobs:
   backend:
     name: Backend (tests y estilo)
-    runs-on: ubuntu-latest
+    # Fijo en 24.04: en ubuntu-latest (26.04) mongo:8 no arranca con kernels 6.19 a 7.0.13
+    # (SERVER-121912). Se quita cuando mongo:8 traiga el arreglo SERVER-125742 (8.0.30+ / 8.3.9+).
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
       run:
         working-directory: backend
+    # Con health check, el job espera a que cada servicio responda antes de los tests; si uno no
+    # arranca, falla al inicializar (o por timeout) en vez de dejar 132 tests en rojo.
     services:
       mongo:
         image: mongo:8
         ports: ["27017:27017"]
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping: 1}).ok'"
+          --health-interval 3s --health-timeout 5s --health-retries 20
       redis:
         image: redis:7-alpine
         ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 3s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
