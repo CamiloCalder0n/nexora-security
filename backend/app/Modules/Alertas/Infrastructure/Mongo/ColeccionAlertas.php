@@ -62,6 +62,7 @@ class ColeccionAlertas extends ColeccionMongo
             [['estado' => 1, 'fecha_hora' => -1], ['name' => 'estado_fecha']],
             [['zona.zona_id' => 1, 'estado' => 1], ['name' => 'zona_estado']],
             [['eventos_ids' => 1], ['name' => 'eventos_ids']],
+            [['estado' => 1, 'prioridad' => -1, 'fecha_hora' => 1], ['name' => 'cola']],
         ];
     }
 }

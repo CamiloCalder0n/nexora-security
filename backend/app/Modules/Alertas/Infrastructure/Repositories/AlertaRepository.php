@@ -26,6 +26,21 @@ class AlertaRepository
             ->first();
     }
 
+    /**
+     * Cola del vigilante (HU11): primero las abiertas (nadie las ha tomado) y luego las atendidas; en
+     * cada grupo, las de mayor prioridad y, dentro de cada prioridad, las más antiguas. Acotada: la
+     * cola de un turno no llega a tantas. Usa el índice `cola`.
+     */
+    public function activas(int $limite): Collection
+    {
+        return Alerta::whereIn('estado', [EstadoAlerta::Abierta, EstadoAlerta::Atendida])
+            ->orderBy('estado')
+            ->orderBy('prioridad', 'desc')
+            ->orderBy('fecha_hora')
+            ->limit($limite)
+            ->get();
+    }
+
     /** La alerta que ya contiene este evento, en cualquier estado (reintentos del job). */
     public function conEvento(string $eventoId): ?Alerta
     {
