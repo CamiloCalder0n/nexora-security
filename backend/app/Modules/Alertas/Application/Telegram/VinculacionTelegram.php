@@ -4,8 +4,6 @@ namespace App\Modules\Alertas\Application\Telegram;
 
 use App\Models\User;
 use App\Modules\Alertas\Infrastructure\Repositories\CuentaTelegramRepository;
-use App\Modules\Identidad\Domain\Rol;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -56,23 +54,6 @@ class VinculacionTelegram
 
             return $usuario;
         });
-    }
-
-    /** El usuario bloqueó el bot: se deja de intentar hasta que se vuelva a vincular. */
-    public function desvincularUsuario(int $usuarioId): void
-    {
-        $this->cuentas->desvincular($usuarioId);
-    }
-
-    public function usuarioDelChat(string $chatId): ?User
-    {
-        return $this->cuentas->activaDelChat($chatId);
-    }
-
-    /** @param list<Rol> $roles */
-    public function destinatarios(array $roles): Collection
-    {
-        return $this->cuentas->vinculadasConRol($roles);
     }
 
     private function claveVence(string $codigo): string

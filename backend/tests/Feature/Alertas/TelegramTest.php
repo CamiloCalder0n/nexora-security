@@ -4,7 +4,6 @@ namespace Tests\Feature\Alertas;
 
 use App\Models\User;
 use App\Modules\Alertas\Application\AlertaService;
-use App\Modules\Alertas\Application\Contracts\BotTelegram;
 use App\Modules\Alertas\Application\Telegram\ProcesadorTelegram;
 use App\Modules\Alertas\Application\Telegram\TelegramNoDisponible;
 use App\Modules\Alertas\Application\Telegram\VinculacionTelegram;
@@ -13,14 +12,19 @@ use App\Modules\Alertas\Domain\Events\AlertaEscalada;
 use App\Modules\Alertas\Domain\Models\Alerta;
 use App\Modules\Alertas\Domain\Models\EntradaBitacora;
 use App\Modules\Alertas\Infrastructure\Jobs\NotificarTelegramJob;
+use App\Modules\Alertas\Infrastructure\Listeners\AvisarPorTelegram;
+use App\Modules\Alertas\Infrastructure\Telegram\TelegramBotApi;
 use App\Modules\Identidad\Domain\Rol;
 use App\Modules\Monitoreo\Domain\Events\CamaraSinSenal;
+use Illuminate\Events\CallQueuedListener;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\Concerns\DocumentosMongo;
 use Tests\Concerns\LimpiaMongo;
 use Tests\TestCase;
@@ -149,7 +153,7 @@ class TelegramTest extends TestCase
     public function test_sin_token_no_se_llama_a_telegram(): void
     {
         config(['alertas.telegram.token' => null]);
-        $this->app->forgetInstance(BotTelegram::class);
+        $this->app->forgetInstance(TelegramBotApi::class);
         $this->vinculado(Rol::Vigilante, '5001');
 
         AlertaCreada::dispatch($this->crearAlerta()->id);
@@ -218,9 +222,20 @@ class TelegramTest extends TestCase
         app()->call([$ultimo, 'handle']);
     }
 
-    public function test_el_aviso_va_por_su_propia_cola(): void
+    public function test_el_reparto_y_el_aviso_van_por_la_cola_de_telegram_fuera_del_lock(): void
     {
-        $this->assertSame('telegram', (new NotificarTelegramJob('x', 1))->queue);
+        Queue::fake();
+        $this->vinculado(Rol::Vigilante, '9101');
+
+        $alerta = $this->crearAlerta();
+
+        AlertaCreada::dispatch($alerta->id);
+        // El reparto no corre dentro del lock de la zona: se encola y, si falla, se reintenta.
+        Queue::assertPushedOn('telegram', CallQueuedListener::class, fn ($job) => $job->class === AvisarPorTelegram::class);
+
+        // Y cada aviso sale por la misma cola, que el worker atiende antes que la correlación (HU21).
+        app(AvisarPorTelegram::class)->handle(new AlertaCreada($alerta->id));
+        Queue::assertPushedOn('telegram', NotificarTelegramJob::class, fn ($job) => $job->alertaId === $alerta->id);
     }
 
     public function test_los_errores_nunca_llevan_el_token(): void
@@ -256,6 +271,7 @@ class TelegramTest extends TestCase
     }
 
     /** Redis devuelve los números como texto: con la caché en memoria esto no se ve. */
+    #[Group('redis')]
     public function test_vincular_funciona_con_la_cache_en_redis(): void
     {
         // Prefijo propio por corrida (Redis conserva las marcas de update_id) y limpieza al final:
@@ -429,7 +445,8 @@ class TelegramTest extends TestCase
         $procesador->procesar($this->boton('9999', "atender:{$alerta->id}"));
 
         $this->assertSame('abierta', $alerta->fresh()->estado->value);
-        $this->assertCount(2, $this->enviados('answerCallbackQuery'));
+        $respuestas = array_map(fn (Request $r) => $r['text'], $this->enviados('answerCallbackQuery'));
+        $this->assertSame(['Tu cuenta no puede atender alertas.', 'Tu cuenta no puede atender alertas.'], $respuestas);
     }
 
     public function test_un_vigilante_inactivo_no_atiende(): void

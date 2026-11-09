@@ -2,10 +2,10 @@
 
 namespace App\Modules\Alertas\Infrastructure\Console;
 
-use App\Modules\Alertas\Application\Contracts\BotTelegram;
 use App\Modules\Alertas\Application\Telegram\ProcesadorTelegram;
 use App\Modules\Alertas\Application\Telegram\TelegramNoDisponible;
 use App\Modules\Alertas\Application\Telegram\TelegramRechazo;
+use App\Modules\Alertas\Infrastructure\Telegram\TelegramBotApi;
 use Illuminate\Console\Command;
 
 /**
@@ -22,7 +22,7 @@ class EscucharTelegram extends Command
 
     private bool $seguir = true;
 
-    public function handle(BotTelegram $bot, ProcesadorTelegram $procesador): int
+    public function handle(TelegramBotApi $bot, ProcesadorTelegram $procesador): int
     {
         if (! $bot->disponible()) {
             $this->error('Falta TELEGRAM_BOT_TOKEN en el .env.');

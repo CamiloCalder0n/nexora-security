@@ -2,21 +2,21 @@
 
 namespace App\Modules\Alertas\Infrastructure\Console;
 
-use App\Modules\Alertas\Application\Contracts\BotTelegram;
 use App\Modules\Alertas\Application\Telegram\ProcesadorTelegram;
 use App\Modules\Alertas\Application\Telegram\TelegramFallo;
+use App\Modules\Alertas\Infrastructure\Telegram\TelegramBotApi;
 use Illuminate\Console\Command;
 
-/** Deja el bot con su descripción y comandos, y elige cómo recibe: webhook (producción) o long polling (local). */
+/** Deja el bot con sus comandos y elige cómo recibe: webhook (producción) o long polling (local). */
 class ConfigurarTelegram extends Command
 {
     protected $signature = 'nexora:telegram-configurar
         {--webhook= : URL pública https del backend (producción); registra el webhook con el secreto}
         {--sin-webhook : Quita el webhook para usar nexora:telegram-escuchar en local}';
 
-    protected $description = 'Configura el bot de Telegram (descripción, comandos y forma de recibir)';
+    protected $description = 'Configura el bot de Telegram (comandos y forma de recibir)';
 
-    public function handle(BotTelegram $bot): int
+    public function handle(TelegramBotApi $bot): int
     {
         if (! $bot->disponible()) {
             $this->error('Falta TELEGRAM_BOT_TOKEN en el .env.');
@@ -31,9 +31,6 @@ class ConfigurarTelegram extends Command
 
         try {
             $yo = $bot->llamar('getMe');
-            $bot->llamar('setMyDescription', ['description' => 'Alertas de Nexora Security para el conjunto: '
-                .'presencia sin registro en portería y cámaras sin señal. Para empezar, envía /start con el código que te da la administración.']);
-            $bot->llamar('setMyShortDescription', ['short_description' => 'Alertas de vigilancia del conjunto residencial.']);
             $bot->llamar('setMyCommands', ['commands' => [
                 ['command' => 'start', 'description' => 'Vincular tu cuenta: /start CODIGO'],
                 ['command' => 'ayuda', 'description' => 'Ver con qué cuenta estás vinculado'],

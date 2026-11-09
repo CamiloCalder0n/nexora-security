@@ -2,10 +2,10 @@
 
 namespace App\Modules\Alertas\Infrastructure\Console;
 
-use App\Modules\Alertas\Application\Contracts\BotTelegram;
 use App\Modules\Alertas\Application\Telegram\TelegramFallo;
 use App\Modules\Alertas\Application\Telegram\VinculacionTelegram;
 use App\Modules\Alertas\Infrastructure\Repositories\CuentaTelegramRepository;
+use App\Modules\Alertas\Infrastructure\Telegram\TelegramBotApi;
 use Illuminate\Console\Command;
 
 /** Código de vinculación para un usuario (mientras el panel no tenga su botón). */
@@ -15,7 +15,7 @@ class CodigoTelegram extends Command
 
     protected $description = 'Genera el código de un solo uso para vincular una cuenta con el bot';
 
-    public function handle(VinculacionTelegram $vinculacion, CuentaTelegramRepository $cuentas, BotTelegram $bot): int
+    public function handle(VinculacionTelegram $vinculacion, CuentaTelegramRepository $cuentas, TelegramBotApi $bot): int
     {
         $usuario = $cuentas->activaPorEmail($this->argument('email'));
         if ($usuario === null) {

@@ -2,11 +2,11 @@
 
 namespace App\Modules\Alertas\Application\Telegram;
 
-use App\Modules\Alertas\Application\Contracts\BotTelegram;
 use App\Modules\Alertas\Domain\EstadoAlerta;
 use App\Modules\Alertas\Domain\Models\Alerta;
 use App\Modules\Alertas\Infrastructure\Repositories\AlertaRepository;
 use App\Modules\Alertas\Infrastructure\Repositories\CuentaTelegramRepository;
+use App\Modules\Alertas\Infrastructure\Telegram\TelegramBotApi;
 use Illuminate\Support\Facades\Cache;
 
 /** Mensajes de alerta para Telegram: solo texto, sin imágenes ni video (HU27, HU37). */
@@ -17,7 +17,7 @@ class NotificadorTelegram
     private const PRIORIDADES = [1 => 'baja', 2 => 'media', 3 => 'alta'];
 
     public function __construct(
-        private readonly BotTelegram $bot,
+        private readonly TelegramBotApi $bot,
         private readonly AlertaRepository $alertas,
         private readonly CuentaTelegramRepository $cuentas,
     ) {}
@@ -48,7 +48,7 @@ class NotificadorTelegram
                 ['text' => 'Atender', 'callback_data' => self::PREFIJO_ATENDER.$alerta->id],
             ]]],
         ]);
-        Cache::put($enviado, true, now()->addDays(2));
+        Cache::put($enviado, true, now()->addDay());
     }
 
     public function texto(Alerta $alerta, ?int $nivel = null): string

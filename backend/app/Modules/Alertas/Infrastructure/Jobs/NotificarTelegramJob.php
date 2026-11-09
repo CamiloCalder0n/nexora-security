@@ -5,7 +5,7 @@ namespace App\Modules\Alertas\Infrastructure\Jobs;
 use App\Modules\Alertas\Application\Telegram\NotificadorTelegram;
 use App\Modules\Alertas\Application\Telegram\TelegramNoDisponible;
 use App\Modules\Alertas\Application\Telegram\TelegramRechazo;
-use App\Modules\Alertas\Application\Telegram\VinculacionTelegram;
+use App\Modules\Alertas\Infrastructure\Repositories\CuentaTelegramRepository;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -46,7 +46,7 @@ class NotificarTelegramJob implements ShouldBeUnique, ShouldQueue
         return [5, 15, 30, 60, 120];
     }
 
-    public function handle(NotificadorTelegram $notificador, VinculacionTelegram $vinculacion): void
+    public function handle(NotificadorTelegram $notificador, CuentaTelegramRepository $cuentas): void
     {
         try {
             $notificador->enviar($this->alertaId, $this->usuarioId, $this->nivel);
@@ -61,8 +61,8 @@ class NotificarTelegramJob implements ShouldBeUnique, ShouldQueue
             Log::warning('Telegram rechazó el aviso de la alerta', [
                 'alerta_id' => $this->alertaId, 'usuario_id' => $this->usuarioId, 'motivo' => $e->getMessage(),
             ]);
-            if ($e->chatPerdido()) {
-                $vinculacion->desvincularUsuario($this->usuarioId);
+            if ($e->chatPerdido()) {  // bloqueó el bot o el chat ya no existe: no se insiste
+                $cuentas->desvincular($this->usuarioId);
             }
             $this->fail($e);
         }

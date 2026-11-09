@@ -2,7 +2,6 @@
 
 namespace App\Modules\Alertas;
 
-use App\Modules\Alertas\Application\Contracts\BotTelegram;
 use App\Modules\Alertas\Application\MotorReglas;
 use App\Modules\Alertas\Domain\Events\AlertaCreada;
 use App\Modules\Alertas\Domain\Events\AlertaEscalada;
@@ -34,7 +33,7 @@ class AlertasServiceProvider extends ServiceProvider
         $this->app->bind(MotorReglas::class, fn ($app) => new MotorReglas(
             array_map(fn (string $regla) => $app->make($regla), config('alertas.reglas')),
         ));
-        $this->app->singleton(BotTelegram::class, fn () => new TelegramBotApi(config('alertas.telegram.token')));
+        $this->app->singleton(TelegramBotApi::class, fn () => new TelegramBotApi(config('alertas.telegram.token')));
     }
 
     public function boot(): void

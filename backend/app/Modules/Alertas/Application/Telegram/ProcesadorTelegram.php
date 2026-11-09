@@ -4,10 +4,11 @@ namespace App\Modules\Alertas\Application\Telegram;
 
 use App\Models\User;
 use App\Modules\Alertas\Application\AlertaService;
-use App\Modules\Alertas\Application\Contracts\BotTelegram;
 use App\Modules\Alertas\Domain\Models\Alerta;
 use App\Modules\Alertas\Domain\TransicionInvalida;
 use App\Modules\Alertas\Infrastructure\Repositories\AlertaRepository;
+use App\Modules\Alertas\Infrastructure\Repositories\CuentaTelegramRepository;
+use App\Modules\Alertas\Infrastructure\Telegram\TelegramBotApi;
 use App\Modules\Identidad\Domain\Rol;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
@@ -32,8 +33,9 @@ class ProcesadorTelegram
     private const ROLES_QUE_ATIENDEN = [Rol::Vigilante, Rol::Admin];
 
     public function __construct(
-        private readonly BotTelegram $bot,
+        private readonly TelegramBotApi $bot,
         private readonly VinculacionTelegram $vinculacion,
+        private readonly CuentaTelegramRepository $cuentas,
         private readonly NotificadorTelegram $notificador,
         private readonly AlertaService $servicio,
         private readonly AlertaRepository $alertas,
@@ -69,7 +71,7 @@ class ProcesadorTelegram
             return;
         }
         $chatId = (string) $mensaje['chat']['id'];
-        $usuario = $this->vinculacion->usuarioDelChat($chatId);
+        $usuario = $this->cuentas->activaDelChat($chatId);
         if ($usuario === null) {
             $limite = "telegram:respuestas:{$chatId}";
             if (RateLimiter::tooManyAttempts($limite, self::RESPUESTAS_SIN_VINCULO)) {
@@ -119,7 +121,7 @@ class ProcesadorTelegram
     {
         $consultaId = (string) ($consulta['id'] ?? '');
         $datos = (string) ($consulta['data'] ?? '');
-        $usuario = isset($consulta['from']['id']) ? $this->vinculacion->usuarioDelChat((string) $consulta['from']['id']) : null;
+        $usuario = isset($consulta['from']['id']) ? $this->cuentas->activaDelChat((string) $consulta['from']['id']) : null;
 
         if ($usuario === null || ! in_array($usuario->rol, self::ROLES_QUE_ATIENDEN, true)) {
             $this->avisar($consultaId, 'Tu cuenta no puede atender alertas.');

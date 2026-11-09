@@ -2,17 +2,17 @@
 
 namespace App\Modules\Alertas\Infrastructure\Telegram;
 
-use App\Modules\Alertas\Application\Contracts\BotTelegram;
 use App\Modules\Alertas\Application\Telegram\TelegramNoDisponible;
 use App\Modules\Alertas\Application\Telegram\TelegramRechazo;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 /**
- * Adaptador HTTP de la Bot API. El token va en la URL, así que ningún mensaje de error que salga
- * de aquí incluye la URL: terminaría en los logs o en failed_jobs.
+ * Cliente HTTP de la Bot API (sin interfaz: tiene una sola implementación y los tests falsean HTTP).
+ * El token va en la URL, así que ningún mensaje de error que salga de aquí incluye la URL:
+ * terminaría en los logs o en failed_jobs.
  */
-class TelegramBotApi implements BotTelegram
+class TelegramBotApi
 {
     public function __construct(private readonly ?string $token) {}
 
@@ -21,6 +21,12 @@ class TelegramBotApi implements BotTelegram
         return filled($this->token);
     }
 
+    /**
+     * Llama un método de la Bot API y devuelve su `result`.
+     *
+     * @throws TelegramNoDisponible si conviene reintentar (red, 5xx, 429)
+     * @throws TelegramRechazo si Telegram dijo que no y reintentar no sirve (400, 401, 403, 404)
+     */
     public function llamar(string $metodo, array $parametros = [], int $timeoutSeg = 10): mixed
     {
         if (! $this->disponible()) {
