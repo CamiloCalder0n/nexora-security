@@ -21,10 +21,13 @@ services:
   worker:
     <<: *php
     command: php artisan queue:work --tries=3 --backoff=5
+    # Si Redis o la BD se caen, queue:work termina con error: Docker lo vuelve a levantar.
+    restart: unless-stopped
 
   scheduler:
     <<: *php
     command: php artisan schedule:work
+    restart: unless-stopped
 
   pgsql:
     image: postgres:16-alpine
@@ -56,8 +59,12 @@ services:
 
   redis:
     image: redis:7-alpine
+    # Persistencia (AOF): un reinicio de Redis no se lleva los jobs que estaban en cola.
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "6379:6379"
+    volumes:
+      - redisdata:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -67,3 +74,4 @@ services:
 volumes:
   pgdata:
   mongodata:
+  redisdata:

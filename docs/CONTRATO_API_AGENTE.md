@@ -73,12 +73,12 @@ Este archivo lo respetan los dos lados. Si alguien necesita cambiarlo, lo avisa 
 | Campo | Regla |
 |---|---|
 | `uuid` | obligatorio, UUID v4, lo genera el agente; sirve para no duplicar |
-| `camara_id` | obligatorio, existe en `camaras` |
+| `camara_id` | obligatorio, entero JSON (no texto), existe en `camaras` |
 | `tipo_objeto` | obligatorio: `persona` o `vehiculo` |
-| `cantidad` | obligatorio, entero 1–50 |
-| `confianza` | obligatorio, número 0–1 (máximo de las detecciones del frame) |
+| `cantidad` | obligatorio, entero JSON 1–50 (ni `true` ni `"5"`) |
+| `confianza` | obligatorio, número JSON 0–1 (no texto); máximo de las detecciones del frame |
 | `fecha_hora` | obligatorio, ISO 8601, no más de 24 h en el pasado ni 5 min en el futuro |
-| `ruta_evidencia` | opcional, ruta **local** de la imagen en el PC del conjunto (la imagen nunca se sube) |
+| `ruta_evidencia` | opcional, ruta **local y relativa** de la imagen en el PC del conjunto (la imagen nunca se sube). Solo `A-Z a-z 0-9 _ - / .`, sin `..` y sin `/` al inicio; máx. 255 |
 
 | Código | Significado | Qué hace el agente |
 |---|---|---|
