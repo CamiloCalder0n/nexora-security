@@ -22,6 +22,9 @@ class Evento extends Model
 {
     public const SCHEMA_VERSION = 1;
 
+    /** uuid v4 en forma canónica (minúsculas, sin llaves): lo exigen la ingesta y el validador de Mongo. */
+    public const PATRON_UUID = '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
+
     protected $attributes = [
         'schema_version' => self::SCHEMA_VERSION,
         'resultado' => 'pendiente',
