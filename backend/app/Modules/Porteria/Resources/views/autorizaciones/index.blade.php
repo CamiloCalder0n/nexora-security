@@ -10,11 +10,7 @@
 @endsection
 
 @section('contenido')
-    @if ($errors->hasAny(['search', 'estado', 'unidad_id', 'page']))
-        <div class="alert alert-warning" role="alert">
-            <i class="bi bi-funnel me-1"></i>El filtro no es válido y se limpió: {{ $errors->first() }}
-        </div>
-    @endif
+    <x-aviso-filtro :campos="['search', 'estado', 'unidad_id', 'page']" />
 
     <x-tabla :paginador="$autorizaciones" buscar="Buscar por visitante, documento o placa" vacio="No hay autorizaciones para mostrar.">
         <x-slot:filtros>

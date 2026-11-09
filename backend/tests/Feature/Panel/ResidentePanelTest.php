@@ -231,9 +231,14 @@ class ResidentePanelTest extends TestCase
 
         $this->get(route('panel.porteria.mis-autorizaciones.index', ['estado' => 'inventado']))
             ->assertRedirect(route('panel.porteria.mis-autorizaciones.index'))
-            ->assertSessionHas('error');
+            ->assertSessionHasErrors('estado');
         $this->get(route('panel.porteria.mis-visitas.index', ['desde' => '2026-11-08', 'hasta' => '2026-11-01']))
             ->assertRedirect(route('panel.porteria.mis-visitas.index'))
-            ->assertSessionHas('error');
+            ->assertSessionHasErrors('hasta');
+
+        $this->followingRedirects()
+            ->get(route('panel.porteria.mis-autorizaciones.index', ['estado' => 'inventado']))
+            ->assertOk()
+            ->assertSee('Algún filtro no era válido; se muestran todos los registros.');
     }
 }

@@ -12,6 +12,10 @@
         @foreach ($zonas as $zona) <tr>…</tr> @endforeach
     </x-tabla>
 --}}
+@php
+    // Página pedida más allá de la última (p. ej. ?page=99): hay registros, pero no en esta página.
+    $fueraDeRango = $paginador->isEmpty() && $paginador->total() > 0;
+@endphp
 <div {{ $attributes->merge(['class' => 'nx-tarjeta']) }}>
     @if ($conBuscador || isset($filtros))
         <form method="GET" action="{{ url()->current() }}" class="p-3 border-bottom" role="search">
@@ -40,7 +44,14 @@
         <table class="table table-hover align-middle mb-0">
             <thead><tr>{{ $cabecera }}</tr></thead>
             <tbody>
-                @if ($paginador->isEmpty())
+                @if ($fueraDeRango)
+                    <tr>
+                        <td colspan="100" class="text-center nx-texto-suave py-5">
+                            No hay registros en esta página.
+                            <a href="{{ $paginador->url(1) }}">Ir a la página 1</a>
+                        </td>
+                    </tr>
+                @elseif ($paginador->isEmpty())
                     <tr><td colspan="100" class="text-center nx-texto-suave py-5">{{ $vacio }}</td></tr>
                 @else
                     {{ $slot }}
@@ -49,7 +60,7 @@
         </table>
     </div>
 
-    @if ($paginador->total() > 0)
+    @if ($paginador->total() > 0 && ! $fueraDeRango)
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 p-3 border-top">
             <small class="nx-texto-suave">
                 Mostrando {{ $paginador->firstItem() }}–{{ $paginador->lastItem() }} de {{ $paginador->total() }}

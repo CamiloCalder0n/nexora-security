@@ -4,10 +4,10 @@ namespace App\Modules\Porteria\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Porteria\Application\AutorizacionService;
+use App\Modules\Porteria\Application\ResidenteService;
 use App\Modules\Porteria\Domain\EstadoAutorizacion;
 use App\Modules\Porteria\Domain\Models\Autorizacion;
 use App\Modules\Porteria\Domain\Models\Residente;
-use App\Modules\Porteria\Domain\Models\Unidad;
 use App\Modules\Porteria\Http\Requests\FiltroMisAutorizacionesRequest;
 use App\Modules\Porteria\Http\Requests\StoreAutorizacionRequest;
 use Illuminate\Http\RedirectResponse;
@@ -19,7 +19,10 @@ class MisAutorizacionesController extends Controller
 {
     private const SIN_RESIDENTE = 'Tu cuenta no está vinculada a un residente. Pide a la administración que la asocie a tu unidad.';
 
-    public function __construct(private readonly AutorizacionService $autorizaciones) {}
+    public function __construct(
+        private readonly AutorizacionService $autorizaciones,
+        private readonly ResidenteService $residentes,
+    ) {}
 
     public function index(FiltroMisAutorizacionesRequest $request): View
     {
@@ -43,8 +46,7 @@ class MisAutorizacionesController extends Controller
         Gate::authorize('create', Autorizacion::class);
 
         return view('porteria::mis-autorizaciones.create', [
-            'unidades' => $residente->unidades()->orderBy('torre')->orderBy('numero')->get()
-                ->mapWithKeys(fn (Unidad $u) => [$u->id => $u->etiqueta])->all(),
+            'unidades' => $this->residentes->opcionesUnidadesDe($residente),
             'maxDias' => AutorizacionService::MAX_DIAS,
         ]);
     }

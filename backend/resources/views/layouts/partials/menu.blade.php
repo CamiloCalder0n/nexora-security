@@ -30,6 +30,10 @@
     ];
 @endphp
 
+@php
+    $rutasDelMenu = collect($secciones)->flatten(1)->pluck(0)->all();
+@endphp
+
 <nav class="nx-menu nav flex-column px-2 pb-3">
     @foreach ($secciones as $titulo => $items)
         @php
@@ -38,9 +42,17 @@
         @if ($visibles)
             <div class="nx-seccion">{{ $titulo }}</div>
             @foreach ($visibles as [$ruta, $texto, $icono])
-                @php $base = \Illuminate\Support\Str::beforeLast($ruta, '.'); @endphp
-                <a href="{{ route($ruta) }}" class="nav-link @if (request()->routeIs($ruta) || (str_ends_with($ruta, '.index') && request()->routeIs($base.'.*') && ! request()->routeIs($base.'.vigentes'))) active @endif">
-                    <i class="bi bi-{{ $icono }}"></i><span>{{ $texto }}</span>
+                @php
+                    $base = \Illuminate\Support\Str::beforeLast($ruta, '.');
+                    // Un ".index" cubre sus subrutas (show, edit…) salvo las que tienen su propio ítem.
+                    $activo = request()->routeIs($ruta) || (
+                        str_ends_with($ruta, '.index')
+                        && request()->routeIs($base.'.*')
+                        && ! request()->routeIs(...array_diff($rutasDelMenu, [$ruta]))
+                    );
+                @endphp
+                <a href="{{ route($ruta) }}" @class(['nav-link', 'active' => $activo]) @if ($activo) aria-current="page" @endif>
+                    <i class="bi bi-{{ $icono }}" aria-hidden="true"></i><span>{{ $texto }}</span>
                 </a>
             @endforeach
         @endif

@@ -4,11 +4,7 @@
 @section('subtitulo', 'Cuentas del sistema: active o desactive el acceso al panel y a la API.')
 
 @section('contenido')
-    @if ($errors->hasAny(['search', 'rol', 'activo']))
-        <div class="alert alert-warning" role="alert">
-            <i class="bi bi-funnel me-1"></i>Los filtros no eran válidos y se limpiaron: {{ $errors->first() }}
-        </div>
-    @endif
+    <x-aviso-filtro :campos="['search', 'rol', 'activo']" />
 
     <div class="row g-2 mb-3">
         @foreach ($roles as $valor => $texto)

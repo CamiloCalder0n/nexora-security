@@ -16,11 +16,7 @@
 @endsection
 
 @section('contenido')
-    @if ($errors->hasAny(['search', 'tipo_ingreso', 'unidad_id', 'desde', 'hasta']))
-        <div class="alert alert-warning" role="alert">
-            <i class="bi bi-funnel me-1"></i>Se quitaron los filtros porque no eran válidos: {{ $errors->first() }}
-        </div>
-    @endif
+    <x-aviso-filtro :campos="['search', 'tipo_ingreso', 'unidad_id', 'desde', 'hasta']" />
 
     <x-tabla :paginador="$registros" buscar="Buscar por visitante, documento o placa" vacio="No hay ingresos con esos filtros.">
         <x-slot:filtros>

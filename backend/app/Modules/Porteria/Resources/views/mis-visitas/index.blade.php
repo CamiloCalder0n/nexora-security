@@ -4,6 +4,8 @@
 @section('subtitulo', 'Ingresos que portería registró hacia tus unidades.')
 
 @section('contenido')
+    <x-aviso-filtro :campos="['search', 'desde', 'hasta']" />
+
     @if (! $residente)
         <div class="alert alert-warning" role="alert">
             <i class="bi bi-info-circle me-1"></i>Tu cuenta no está vinculada a un residente. Pide a la administración que la asocie a tu unidad.

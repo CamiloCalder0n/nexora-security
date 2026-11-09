@@ -105,7 +105,7 @@ class ZonasPanelTest extends TestCase
         $this->followingRedirects()
             ->get(route('panel.monitoreo.zonas.index', ['tipo' => 'inventado']))
             ->assertOk()
-            ->assertSee('Se limpiaron los filtros');
+            ->assertSee('Algún filtro no era válido; se muestran todos los registros.');
     }
 
     public function test_create_y_show_y_edit_responden_200(): void

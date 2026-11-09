@@ -79,12 +79,12 @@ class ResidentesPanelTest extends TestCase
         $this->actingAs($this->admin)
             ->get(route('panel.porteria.residentes.index', ['tipo_residente' => 'inventado', 'unidad_id' => 9999]))
             ->assertRedirect(route('panel.porteria.residentes.index'))
-            ->assertSessionHas('error');
+            ->assertSessionHasErrors(['tipo_residente', 'unidad_id']);
 
         $this->actingAs($this->admin)->followingRedirects()
             ->get(route('panel.porteria.residentes.index', ['unidad_id' => 'abc']))
             ->assertOk()
-            ->assertSee('El filtro no es válido; se muestran todos los residentes.');
+            ->assertSee('Algún filtro no era válido; se muestran todos los registros.');
     }
 
     public function test_crea_residente_con_unidades_y_titularidad(): void

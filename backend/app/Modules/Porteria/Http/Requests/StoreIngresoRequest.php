@@ -2,15 +2,13 @@
 
 namespace App\Modules\Porteria\Http\Requests;
 
+use App\Modules\Porteria\Domain\Placa;
 use App\Modules\Porteria\Domain\TipoIngreso;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreIngresoRequest extends FormRequest
 {
-    /** Carros (ABC123) y motos (ABC12D o ABC12). */
-    public const FORMATO_PLACA = '/^[A-Z]{3}\d{2}[A-Z0-9]?$/';
-
     public function authorize(): bool
     {
         return true;
@@ -18,9 +16,8 @@ class StoreIngresoRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        if (is_string($this->input('placa'))) {
-            $placa = mb_strtoupper(preg_replace('/[\s-]+/', '', $this->input('placa')));
-            $this->merge(['placa' => $placa === '' ? null : $placa]);
+        if ($this->has('placa')) {
+            $this->merge(['placa' => Placa::normalizar($this->input('placa'))]);
         }
     }
 
@@ -31,10 +28,10 @@ class StoreIngresoRequest extends FormRequest
             'autorizacion_id' => ['nullable', 'integer', 'exists:autorizaciones,id'],
             'nombre_visitante' => ['required_without:autorizacion_id', 'nullable', 'string', 'max:120'],
             'documento' => ['required_without:autorizacion_id', 'nullable', 'string', 'max:20'],
-            'placa' => ['required_if:tipo_ingreso,'.TipoIngreso::Vehiculo->value, 'nullable', 'string', 'max:10', 'regex:'.self::FORMATO_PLACA],
+            'placa' => ['required_if:tipo_ingreso,'.TipoIngreso::Vehiculo->value, 'nullable', 'string', 'max:10', 'regex:'.Placa::FORMATO],
             'cantidad_personas' => ['required', 'integer', 'between:1,20'],
             'unidad_id' => ['required', 'integer', 'exists:unidades,id'],
-            'zona_id' => ['required', 'integer', 'exists:zonas,id'],
+            'zona_id' => ['required', 'integer', Rule::exists('zonas', 'id')->where('activa', true)],
         ];
     }
 
@@ -54,7 +51,10 @@ class StoreIngresoRequest extends FormRequest
     {
         return [
             'placa.required_if' => 'La placa es obligatoria para un ingreso vehicular.',
-            'placa.regex' => 'La placa debe tener el formato ABC123 (carro) o ABC12D (moto).',
+            'placa.regex' => Placa::MENSAJE_FORMATO,
+            'nombre_visitante.required_without' => 'Escriba el nombre del visitante o elija una autorización.',
+            'documento.required_without' => 'Escriba el documento del visitante o elija una autorización.',
+            'zona_id.exists' => 'Elija una zona de ingreso activa.',
         ];
     }
 }

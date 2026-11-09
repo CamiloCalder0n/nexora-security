@@ -10,6 +10,8 @@
 @endsection
 
 @section('contenido')
+    <x-aviso-filtro :campos="['search', 'tipo_residente', 'unidad_id']" />
+
     <x-tabla :paginador="$residentes" buscar="Buscar por nombre, documento o teléfono" vacio="No hay residentes que coincidan con la búsqueda.">
         <x-slot:filtros>
             <div class="col-6 col-md-auto">

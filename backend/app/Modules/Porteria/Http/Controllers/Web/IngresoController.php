@@ -13,6 +13,7 @@ use App\Modules\Porteria\Domain\Models\Unidad;
 use App\Modules\Porteria\Domain\TipoIngreso;
 use App\Modules\Porteria\Http\Requests\FiltroIngresosRequest;
 use App\Modules\Porteria\Http\Requests\StoreIngresoRequest;
+use App\Modules\Porteria\Http\Requests\UnidadAutorizacionesRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -67,11 +68,9 @@ class IngresoController extends Controller
     }
 
     /** Las autorizaciones que se pueden usar ya en la unidad, para precargar el formulario. */
-    public function autorizacionesDeUnidad(Request $request): JsonResponse
+    public function autorizacionesDeUnidad(UnidadAutorizacionesRequest $request): JsonResponse
     {
-        $datos = $request->validate(['unidad_id' => ['required', 'integer', 'exists:unidades,id']]);
-
-        $autorizaciones = $this->autorizaciones->vigentesDeUnidad((int) $datos['unidad_id'])
+        $autorizaciones = $this->autorizaciones->vigentesDeUnidad($request->unidadId())
             ->map(fn (Autorizacion $a) => [
                 'id' => $a->id,
                 'visitante_nombre' => $a->visitante_nombre,

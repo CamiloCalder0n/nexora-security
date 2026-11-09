@@ -8,7 +8,12 @@
 <form method="POST" action="{{ $action }}" class="d-inline" onsubmit="return confirm(@js($confirmar));">
     @csrf
     @method($metodo)
-    <button type="submit" {{ $attributes->merge(['class' => 'btn btn-sm btn-outline-danger']) }} title="{{ $texto }}">
-        <i class="bi bi-{{ $icono }}"></i><span class="d-none d-xl-inline ms-1">{{ $texto }}</span>
+    {{-- Si se pasa class, reemplaza la clase por defecto (así no se duplica "btn"). --}}
+    <button type="submit" {{ $attributes->merge([
+        'class' => $attributes->has('class') ? '' : 'btn btn-sm btn-outline-danger',
+        'aria-label' => $texto,
+        'title' => $texto,
+    ]) }}>
+        <i class="bi bi-{{ $icono }}" aria-hidden="true"></i><span class="d-none d-xl-inline ms-1">{{ $texto }}</span>
     </button>
 </form>

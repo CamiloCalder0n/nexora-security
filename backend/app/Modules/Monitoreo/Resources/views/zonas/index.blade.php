@@ -10,16 +10,7 @@
 @endsection
 
 @section('contenido')
-    @if ($errors->hasAny(['search', 'tipo', 'activa', 'page']))
-        <div class="alert alert-warning" role="alert">
-            <i class="bi bi-funnel me-1"></i>Se limpiaron los filtros porque no eran válidos:
-            <ul class="mb-0 mt-1">
-                @foreach (['search', 'tipo', 'activa', 'page'] as $campo)
-                    @error($campo)<li>{{ $message }}</li>@enderror
-                @endforeach
-            </ul>
-        </div>
-    @endif
+    <x-aviso-filtro :campos="['search', 'tipo', 'activa', 'page']" />
 
     <x-tabla :paginador="$zonas" buscar="Buscar por nombre" vacio="No hay zonas que coincidan con la búsqueda.">
         <x-slot:filtros>

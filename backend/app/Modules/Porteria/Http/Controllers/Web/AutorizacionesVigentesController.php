@@ -4,19 +4,17 @@ namespace App\Modules\Porteria\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Porteria\Application\AutorizacionService;
-use Illuminate\Http\Request;
+use App\Modules\Porteria\Http\Requests\FiltroVigentesRequest;
 use Illuminate\View\View;
 
 class AutorizacionesVigentesController extends Controller
 {
     public function __construct(private readonly AutorizacionService $autorizaciones) {}
 
-    public function __invoke(Request $request): View
+    public function __invoke(FiltroVigentesRequest $request): View
     {
-        $filtros = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
-
         return view('porteria::autorizaciones-vigentes.index', [
-            'autorizaciones' => $this->autorizaciones->listar([...$filtros, 'vigentes' => true]),
+            'autorizaciones' => $this->autorizaciones->listar([...$request->filtros(), 'vigentes' => true]),
         ]);
     }
 }

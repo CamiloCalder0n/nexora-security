@@ -3,13 +3,14 @@
 namespace App\Modules\Porteria\Http\Requests;
 
 use App\Modules\Porteria\Domain\TipoResidente;
-use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
 
 class FiltroResidentesRequest extends FormRequest
 {
+    /** Un filtro inválido vuelve al listado sin filtros (nunca a la misma URL, para no entrar en bucle); en JSON responde 422. */
+    protected $redirectRoute = 'panel.porteria.residentes.index';
+
     public function authorize(): bool
     {
         return true;
@@ -24,13 +25,13 @@ class FiltroResidentesRequest extends FormRequest
         ];
     }
 
-    /** Un filtro inválido vuelve al listado sin filtros (nunca a la misma URL, para no entrar en bucle). */
-    protected function failedValidation(Validator $validator): void
+    public function attributes(): array
     {
-        throw new HttpResponseException(
-            redirect()->route('panel.porteria.residentes.index')
-                ->with('error', 'El filtro no es válido; se muestran todos los residentes.')
-        );
+        return [
+            'search' => 'búsqueda',
+            'tipo_residente' => 'tipo de residente',
+            'unidad_id' => 'unidad',
+        ];
     }
 
     public function filtros(): array

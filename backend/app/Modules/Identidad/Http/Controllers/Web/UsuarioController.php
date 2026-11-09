@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Modules\Identidad\Application\UsuarioService;
 use App\Modules\Identidad\Domain\Rol;
+use App\Modules\Identidad\Http\Requests\CambiarActivoRequest;
 use App\Modules\Identidad\Http\Requests\FiltroUsuariosRequest;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class UsuarioController extends Controller
@@ -25,10 +25,9 @@ class UsuarioController extends Controller
         ]);
     }
 
-    public function cambiarActivo(Request $request, User $usuario): RedirectResponse
+    public function cambiarActivo(CambiarActivoRequest $request, User $usuario): RedirectResponse
     {
-        // El formulario envía el estado deseado: reenviarlo no invierte el cambio.
-        $activo = (bool) $request->validate(['activo' => ['required', 'boolean']])['activo'];
+        $activo = $request->activo();
 
         try {
             $this->usuarios->cambiarActivo($usuario, $activo, $request->user());

@@ -12,6 +12,8 @@
 @endsection
 
 @section('contenido')
+    <x-aviso-filtro :campos="['search', 'estado']" />
+
     @if (! $residente)
         <div class="alert alert-warning" role="alert"><i class="bi bi-info-circle me-1"></i>{{ $sinResidente }}</div>
     @else

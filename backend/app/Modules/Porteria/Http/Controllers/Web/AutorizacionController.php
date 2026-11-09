@@ -38,7 +38,7 @@ class AutorizacionController extends Controller
     {
         Gate::authorize('create', Autorizacion::class);
 
-        return view('porteria::autorizaciones.create', $this->opcionesFormulario());
+        return view('porteria::autorizaciones.create', $this->residentes->opcionesParaAutorizar());
     }
 
     public function store(StoreAutorizacionRequest $request): RedirectResponse
@@ -66,9 +66,13 @@ class AutorizacionController extends Controller
         ]);
     }
 
-    public function edit(Autorizacion $autorizacion): View
+    public function edit(Autorizacion $autorizacion): View|RedirectResponse
     {
         Gate::authorize('update', $autorizacion);
+
+        if ($autorizacion->estado !== EstadoAutorizacion::Vigente) {
+            return $this->noModificable($autorizacion);
+        }
 
         return view('porteria::autorizaciones.edit', [
             'autorizacion' => $autorizacion->load(['unidad', 'residente']),
@@ -78,6 +82,10 @@ class AutorizacionController extends Controller
     public function update(UpdateAutorizacionRequest $request, Autorizacion $autorizacion): RedirectResponse
     {
         Gate::authorize('update', $autorizacion);
+
+        if ($autorizacion->estado !== EstadoAutorizacion::Vigente) {
+            return $this->noModificable($autorizacion);
+        }
 
         $this->autorizaciones->actualizar($autorizacion, $request->datos());
 
@@ -96,19 +104,9 @@ class AutorizacionController extends Controller
             ->with('exito', 'Autorización anulada.');
     }
 
-    /** Residentes del selector y las unidades de cada uno, para filtrar en el formulario. */
-    private function opcionesFormulario(): array
+    private function noModificable(Autorizacion $autorizacion): RedirectResponse
     {
-        $unidades = $this->residentes->unidades()->load('residentes');
-
-        $residentes = $unidades->flatMap->residentes->unique('id')->sortBy('nombre');
-
-        return [
-            'residentes' => $residentes->mapWithKeys(fn ($r) => [$r->id => "{$r->nombre} ({$r->documento})"])->all(),
-            'unidades' => $unidades->pluck('etiqueta', 'id')->all(),
-            'unidadesPorResidente' => $residentes->mapWithKeys(fn ($r) => [
-                $r->id => $unidades->filter(fn ($u) => $u->residentes->contains('id', $r->id))->pluck('id')->values()->all(),
-            ])->all(),
-        ];
+        return redirect()->route('panel.porteria.autorizaciones.show', $autorizacion)
+            ->with('error', 'Solo se puede modificar una autorización vigente.');
     }
 }

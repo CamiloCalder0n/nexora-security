@@ -166,16 +166,21 @@ class AutorizacionesPanelTest extends TestCase
         $this->assertSame('XYZ987', $autorizacion->placa);
     }
 
-    public function test_editar_usada_muestra_error_de_regla(): void
+    public function test_editar_o_actualizar_una_no_vigente_vuelve_al_detalle_con_error(): void
     {
         $usada = Autorizacion::factory()->paraResidente($this->residente, $this->unidad)->usada()->create();
-        $editar = route('panel.porteria.autorizaciones.edit', $usada);
+        $detalle = route('panel.porteria.autorizaciones.show', $usada);
+        $this->actingAs($this->admin);
 
-        $this->actingAs($this->admin)
-            ->from($editar)
-            ->put(route('panel.porteria.autorizaciones.update', $usada), ['visitante_nombre' => 'X', 'visitante_documento' => '1'])
-            ->assertRedirect($editar)
-            ->assertSessionHasErrors('regla');
+        $this->get(route('panel.porteria.autorizaciones.edit', $usada))
+            ->assertRedirect($detalle)
+            ->assertSessionHas('error', 'Solo se puede modificar una autorización vigente.');
+
+        $this->put(route('panel.porteria.autorizaciones.update', $usada), ['visitante_nombre' => 'X', 'visitante_documento' => '1'])
+            ->assertRedirect($detalle)
+            ->assertSessionHas('error', 'Solo se puede modificar una autorización vigente.');
+
+        $this->assertNotSame('X', $usada->fresh()->visitante_nombre);
     }
 
     public function test_anula_y_anular_de_nuevo_muestra_error(): void
@@ -215,6 +220,6 @@ class AutorizacionesPanelTest extends TestCase
         $this->followingRedirects()
             ->get(route('panel.porteria.autorizaciones.index', ['estado' => 'inventado']))
             ->assertOk()
-            ->assertSee('El filtro no es válido');
+            ->assertSee('Algún filtro no era válido; se muestran todos los registros.');
     }
 }

@@ -6,7 +6,7 @@
 @section('acciones')
     <a href="{{ route('panel.monitoreo.zonas.index') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Zonas</a>
     <a href="{{ route('panel.monitoreo.zonas.edit', $zona) }}" class="btn btn-primary"><i class="bi bi-pencil me-1"></i>Editar</a>
-    <x-boton-eliminar :action="route('panel.monitoreo.zonas.destroy', $zona)"
+    <x-boton-eliminar :action="route('panel.monitoreo.zonas.destroy', $zona)" class="btn btn-outline-danger"
         confirmar="¿Eliminar la zona «{{ $zona->nombre }}»? Si tiene cámaras o historial, desactívela en su lugar." />
 @endsection
 

@@ -10,6 +10,8 @@
 @endsection
 
 @section('contenido')
+    <x-aviso-filtro :campos="['search', 'page']" />
+
     <x-tabla :paginador="$autorizaciones" buscar="Buscar por visitante, documento o placa" vacio="No hay autorizaciones vigentes en este momento.">
         <x-slot:cabecera>
             <th>Visitante</th>

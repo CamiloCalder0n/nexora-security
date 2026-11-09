@@ -1,6 +1,8 @@
 @php
-    $asignadas = array_map('strval', (array) old('unidades', $residente->unidades->pluck('id')->all()));
-    $titulares = array_map('strval', (array) old('titular_de', $residente->unidades->filter(fn ($u) => $u->pivot->es_titular)->pluck('id')->all()));
+    // Tras un error se respeta lo que el usuario dejó marcado (aunque haya desmarcado todo).
+    $conErrores = $errors->any();
+    $asignadas = array_map('strval', (array) ($conErrores ? old('unidades', []) : $residente->unidades->pluck('id')->all()));
+    $titulares = array_map('strval', (array) ($conErrores ? old('titular_de', []) : $residente->unidades->filter(fn ($u) => $u->pivot->es_titular)->pluck('id')->all()));
 @endphp
 @csrf
 <div class="row g-3">
