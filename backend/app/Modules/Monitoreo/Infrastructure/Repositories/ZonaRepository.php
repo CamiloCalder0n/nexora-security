@@ -74,4 +74,9 @@ class ZonaRepository
     {
         return ['total' => Zona::count(), 'activas' => Zona::where('activa', true)->count()];
     }
+
+    public function conFranjas(int $id): Zona
+    {
+        return Zona::with('franjas')->findOrFail($id);
+    }
 }

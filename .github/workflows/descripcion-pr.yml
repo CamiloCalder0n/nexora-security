@@ -1,0 +1,25 @@
+name: Descripción del PR
+
+# Aparte del CI: editar el texto del PR no vuelve a correr ni cancela los tests.
+on:
+  pull_request:
+    types: [opened, edited, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  firmas:
+    name: Título y descripción sin firmas automáticas
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Revisar la descripción
+        env:
+          LC_ALL: C.UTF-8
+          TITULO: ${{ github.event.pull_request.title }}
+          DESCRIPCION: ${{ github.event.pull_request.body }}
+        run: |
+          if printf '%s\n%s' "$TITULO" "$DESCRIPCION" | grep -niP '^co-authored-by:|generated with|\x{1F916}'; then
+            echo "El título o la descripción del PR llevan firmas automáticas."; exit 1
+          fi

@@ -15,6 +15,7 @@ cp backend/.env.example backend/.env
 docker compose up -d --build
 docker compose exec app php artisan key:generate
 docker compose exec app php artisan migrate --seed
+docker compose exec app php artisan nexora:mongo-instalar   # colecciones, validación e índices de MongoDB
 docker compose exec app php artisan test
 # http://localhost:8000
 ```

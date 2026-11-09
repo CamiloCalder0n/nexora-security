@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # En PR se cancela la corrida vieja; en main cada merge conserva su resultado.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  backend:
+    name: Backend (tests y estilo)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      mongo:
+        image: mongo:8
+        ports: ["27017:27017"]
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mongodb, pdo_sqlite
+          coverage: none
+      - name: Dependencias
+        id: deps
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Entorno de pruebas
+        run: |
+          cp .env.example .env
+          sed -i -e 's#^MONGODB_URI=.*#MONGODB_URI=mongodb://127.0.0.1:27017#' \
+                 -e 's/^REDIS_HOST=.*/REDIS_HOST=127.0.0.1/' .env
+          php artisan key:generate
+      - name: Tests
+        run: php artisan test
+      # Corre aunque fallen los tests: el PR muestra las dos cosas.
+      - name: Estilo (Pint)
+        if: (success() || failure()) && steps.deps.outcome == 'success'
+        run: vendor/bin/pint --test
+
+  agente:
+    name: Agente (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Sin agente en esta rama
+        if: hashFiles('agente/requirements.txt') == ''
+        run: echo "Esta rama no tiene agente/; no hay tests que correr."
+      - uses: actions/setup-python@v6
+        if: hashFiles('agente/requirements.txt') != ''
+        with:
+          python-version: "3.12"
+      # Las mismas versiones de requirements.txt, sin el modelo YOLO (los tests no lo cargan)
+      # y con OpenCV sin interfaz gráfica.
+      - name: Tests
+        if: hashFiles('agente/requirements.txt') != ''
+        working-directory: agente
+        run: |
+          sed -e '/^ultralytics/d' -e 's/^opencv-python\([^-]\|$\)/opencv-python-headless\1/' requirements.txt > "$RUNNER_TEMP/requisitos.txt"
+          pip install --quiet -r "$RUNNER_TEMP/requisitos.txt"
+          pytest -q
+
+  higiene:
+    name: Higiene del PR (archivos, secretos, autoría)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      LC_ALL: C.UTF-8
+      BASE: origin/${{ github.base_ref }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Base del PR
+        run: git rev-parse --verify "$BASE"
+      - name: Archivos que no se versionan
+        run: |
+          prohibidos=$(git -c core.quotePath=false diff --no-renames --diff-filter=d --name-only "$BASE"...HEAD \
+            | grep -iE '(^|/)\.env(\.[^/]*)?$|\.mp4$|\.mov$|\.pt$|\.db$|(^|/)evidencias/|(^|/)vendor/|(^|/)node_modules/' \
+            | grep -v '\.env\.example$' || true)
+          if [ -n "$prohibidos" ]; then echo "Archivos que no deben subirse:"; echo "$prohibidos"; exit 1; fi
+      # Los tests usan credenciales ficticias a propósito; se revisa el resto del código y la configuración.
+      - name: Secretos en el diff
+        run: |
+          if git diff "$BASE"...HEAD -- . ':(exclude)*.example' ':(exclude)*.md' ':(exclude,glob)**/tests/**' \
+            | grep -nP '^\+.*((TOKEN|SECRET|PASSWORD|API_KEY)[A-Z_]*["'"'"']?\s*[:=]\s*["'"'"']?(?![A-Za-z0-9_.]*[(\[])[A-Za-z0-9_./+-]{8,}|\b[0-9]{8,10}:[A-Za-z0-9_-]{35}(?![A-Za-z0-9_-])|mongodb\+srv://[^\s]+:[^\s]+@|postgres(ql)?://[^\s]+:[^\s]+@)'; then
+            echo "Parece haber un secreto en el diff."; exit 1
+          fi
+      - name: Commits sin firmas automáticas
+        run: |
+          if git log "$BASE"..HEAD --no-merges --format='%B' | grep -niP '^co-authored-by:|generated with|\x{1F916}'; then
+            echo "Los commits llevan coautores o firmas automáticas: el autor es solo el dueño de la rama."; exit 1
+          fi
