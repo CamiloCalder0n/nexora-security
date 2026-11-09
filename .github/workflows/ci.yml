@@ -16,9 +16,7 @@ concurrency:
 jobs:
   backend:
     name: Backend (tests y estilo)
-    # Fijo en 24.04: en ubuntu-latest (26.04) mongo:8 no arranca con kernels 6.19 a 7.0.13
-    # (SERVER-121912). Se quita cuando mongo:8 traiga el arreglo SERVER-125742 (8.0.30+ / 8.3.9+).
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
       run:
@@ -27,7 +25,11 @@ jobs:
     # arranca, falla al inicializar (o por timeout) en vez de dejar 132 tests en rojo.
     services:
       mongo:
-        image: mongo:8
+        # mongo:8 no arranca en los runners de GitHub (kernel 6.19 o más nuevo, SERVER-121912). La 7 no
+        # está afectada (SERVER-125742 la lista como soportada en todos los kernels) y acepta los mismos
+        # validadores $jsonSchema que usa el backend. Local y Atlas siguen en la 8. Se vuelve a la 8
+        # cuando su imagen sea 8.0.30+/8.3.9+ y el runner tenga kernel 7.0.14+ (ver SERVER-136848).
+        image: mongo:7
         ports: ["27017:27017"]
         options: >-
           --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping: 1}).ok'"
