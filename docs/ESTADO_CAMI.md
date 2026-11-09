@@ -28,14 +28,14 @@
 
 - **CI rojo en el job Backend:** `ConnectionTimeoutException` contra MongoDB en los tests que usan Mongo. Pasa también en `main` y lo arregla su PR #10 (abierto). En local todo pasa.
 - **Idempotencia del agente sin el paso de instalación de MongoDB:** si no se corre `php artisan nexora:mongo-instalar`, la colección `eventos` queda sin el índice único `uuid_unico` y un evento reenviado responde 202 "recibido" en lugar de 200 "duplicado". El paso está en el README, pero `migrate:fresh` no lo hace. Sugerencia para Santiago: correrlo en el arranque del contenedor o advertirlo en `/up`.
-- **Atender/Cerrar alertas desde el panel:** dependen de su PR #9 (API de la cola, abierto) y de `statefulApi()` en `bootstrap/app.php`. La vista ya trae los botones y se activan solos cuando existan las rutas.
+- **Atender/Cerrar alertas desde el panel:** resuelto al fusionar `main` en el #13. La cola lee con `AlertaService::activas()` (el mismo caso de uso de `GET /api/v1/alertas`) y los botones llaman a `atender`/`cerrar` con la sesión del panel (`statefulApi()` activo en `bootstrap/app.php`).
 
 ## Qué necesito de ti
 
-1. **Revisar y mergear el #12**; luego cambiar la base del #13 a `main`.
+1. ~~Revisar y mergear el #12~~ (hecho; el #13 ya tiene `main` fusionado).
 2. **Confirmar lo de zonas en Monitoreo:** el CRUD web (`Http/Controllers/Web/ZonaController.php`, `Resources/views/zonas/`, `Routes/web.php`) y el filtro de la API viven en el módulo de Santiago. Lo tomé como parte de "la API de zonas que ya es mía" porque tus rutas sin commit ya lo ponían ahí; que Santiago lo revise en el #13.
-3. **`statefulApi()` en `bootstrap/app.php`** (archivo compartido): ¿lo activas tú o Santiago cuando entre su #9?
+3. ~~`statefulApi()` en `bootstrap/app.php`~~ (activado en el #13).
 4. **La checklist del frontend del profe y la Guía 03 no están en el repo.** Reconstruí 2b, 2c y 2d desde tus rutas sin commit y el plan maestro, y la revisión usó una checklist estándar. Si tienes la del profe, pásamela para cruzarla.
-5. **Usuarios desactivados con la sesión web abierta:** siguen entrando a las rutas que solo exigen `auth` (`EnsureRol` ya los bloquea con 403 en las que tienen rol). Arreglarlo toca `EnsureRol` o `routes/`; dime si lo hago.
+5. ~~Usuarios desactivados con la sesión web abierta~~: resuelto con el middleware `CerrarSesionInactiva` de Identidad en los grupos `web` y `api`; cierra la sesión en la siguiente petición.
 6. **Asignar la cuenta de usuario a un residente** desde el panel requiere un método en un Service de Identidad. Hoy solo se muestra si ya tiene cuenta.
 7. Pendientes de la matriz que no son código: documentos de `docs/arquitectura`, `docs/bd2`, `docs/ingsoft` y `docs/backend`, scripts de `database/mongo`, k6, etiquetas y entrevista.

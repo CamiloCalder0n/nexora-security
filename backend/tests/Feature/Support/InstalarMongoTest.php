@@ -58,7 +58,7 @@ class InstalarMongoTest extends TestCase
         $this->assertSame(365 * 24 * 60 * 60, $eventos['ttl_365_dias']['expireAfterSeconds']);
         $this->assertSame(['resultado' => 'pendiente'], (array) $eventos['pendientes']['partialFilterExpression']);
         $this->assertArrayHasKey('zona_fecha', $eventos);
-        $this->assertSame(['estado_fecha', 'zona_estado', 'eventos_ids'], array_values(array_diff(array_keys($this->indices('alertas')), ['_id_'])));
+        $this->assertSame(['estado_fecha', 'zona_estado', 'eventos_ids', 'cola'], array_values(array_diff(array_keys($this->indices('alertas')), ['_id_'])));
         $this->assertTrue($this->indices('bitacora')['secuencia_unica']->isUnique());
         $this->assertArrayHasKey('alerta_tipo', $this->indices('bitacora'));
     }

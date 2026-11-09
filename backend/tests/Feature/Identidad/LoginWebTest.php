@@ -67,11 +67,12 @@ class LoginWebTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_usuario_desactivado_con_sesion_abierta_recibe_403(): void
+    public function test_usuario_desactivado_con_sesion_abierta_vuelve_al_login(): void
     {
         $admin = User::factory()->conRol(Rol::Admin)->create(['activo' => false]);
 
-        $this->actingAs($admin)->get(route('panel.dashboard'))->assertForbidden()->assertSee('Acceso denegado');
+        $this->actingAs($admin)->get(route('panel.dashboard'))->assertRedirect(route('login'));
+        $this->assertGuest('web');
     }
 
     public function test_el_agente_no_entra_al_panel(): void

@@ -12,18 +12,31 @@ use App\Modules\Alertas\Domain\Reglas\ResultadoRegla;
 use App\Modules\Alertas\Domain\TipoAlerta;
 use App\Modules\Alertas\Domain\TransicionInvalida;
 use App\Modules\Alertas\Infrastructure\Repositories\AlertaRepository;
+use App\Modules\Identidad\Domain\Rol;
 use App\Modules\Monitoreo\Application\EventoService;
 use App\Modules\Monitoreo\Domain\Events\CamaraSinSenal;
 use App\Modules\Monitoreo\Domain\Models\Evento;
 use App\Modules\Monitoreo\Domain\Models\Zona;
 use Closure;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 
 /** Ciclo de vida de la alerta: crear o agrupar, atender y cerrar. Cada cambio de estado va a la bitácora. */
 class AlertaService
 {
+    /** Quién atiende y cierra alertas, por el panel o por Telegram. */
+    public const ROLES_QUE_ATIENDEN = [Rol::Vigilante, Rol::Admin];
+
+    public const SIN_PERMISO = 'Tu cuenta no puede atender alertas.';
+
+    public const FALTA_CLASIFICACION = 'Para cerrar la alerta hay que clasificarla: falsa_alarma, sin_novedad o incidente.';
+
+    public const INCIDENTE_SIN_OBSERVACION = 'Un incidente necesita una observación de lo que pasó.';
+
+    private const MAX_COLA = 100;
+
     public function __construct(
         private readonly AlertaRepository $alertas,
         private readonly EventoService $eventos,
@@ -173,6 +186,17 @@ class AlertaService
         return $escaladas;
     }
 
+    public function puedeAtender(User $usuario): bool
+    {
+        return $usuario->activo && in_array($usuario->rol, self::ROLES_QUE_ATIENDEN, true);
+    }
+
+    /** Cola de alertas activas para el panel del vigilante (HU11). */
+    public function activas(): Collection
+    {
+        return $this->alertas->activas(self::MAX_COLA);
+    }
+
     public function atender(Alerta $alerta, User $usuario): Alerta
     {
         return $this->enLockDeZona($alerta->zona['zona_id'], fn () => $this->atenderBloqueado($alerta->refresh(), $usuario));
@@ -206,12 +230,12 @@ class AlertaService
 
         if ($tipo === null) {
             throw ValidationException::withMessages([
-                'clasificacion' => 'Para cerrar la alerta hay que clasificarla: falsa_alarma, sin_novedad o incidente.',
+                'clasificacion' => self::FALTA_CLASIFICACION,
             ]);
         }
         if ($tipo === Clasificacion::Incidente && $observacion === null) {
             throw ValidationException::withMessages([
-                'observacion' => 'Un incidente necesita una observación de lo que pasó.',
+                'observacion' => self::INCIDENTE_SIN_OBSERVACION,
             ]);
         }
         if ($observacion !== null && mb_strlen($observacion) > Alerta::MAX_OBSERVACION) {

@@ -3,10 +3,9 @@
 namespace Tests\Feature\Panel;
 
 use App\Models\User;
-use App\Modules\Analitica\Infrastructure\Repositories\AlertasLecturaRepository;
+use App\Modules\Alertas\Application\AlertaService;
 use App\Modules\Identidad\Domain\Rol;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Route;
 use MongoDB\Driver\Exception\ConnectionTimeoutException;
 use Tests\Concerns\DocumentosMongo;
 use Tests\Concerns\LimpiaMongo;
@@ -61,21 +60,46 @@ class ColaAlertasTest extends TestCase
             ->assertSee('Parqueadero');
     }
 
-    public function test_sin_el_api_de_alertas_no_muestra_botones_de_accion(): void
+    public function test_los_botones_apuntan_al_api_de_alertas(): void
     {
-        $this->assertFalse(Route::has('api.v1.alertas.atender'));
-        $this->crearAlerta();
+        $alerta = $this->crearAlerta();
 
-        $respuesta = $this->como(Rol::Vigilante)->get(route('panel.analitica.cola-alertas'))->assertOk();
+        $this->como(Rol::Vigilante)->get(route('panel.analitica.cola-alertas'))
+            ->assertOk()
+            ->assertSee(route('api.v1.alertas.atender', $alerta->id))
+            ->assertSee(route('api.v1.alertas.cerrar', $alerta->id))
+            ->assertSee('Confirmar cierre');
+    }
 
-        $this->assertFalse($respuesta->viewData('acciones'));
-        $respuesta->assertDontSee('js-atender')->assertDontSee('Confirmar cierre');
+    public function test_atender_y_cerrar_funcionan_con_la_sesion_del_panel(): void
+    {
+        $alerta = $this->crearAlerta();
+        $panel = ['Referer' => config('app.url').'/panel/analitica/cola-alertas'];
+
+        $this->como(Rol::Vigilante)
+            ->postJson(route('api.v1.alertas.atender', $alerta->id), [], $panel)
+            ->assertOk()
+            ->assertJsonPath('data.estado', 'atendida');
+
+        $this->postJson(route('api.v1.alertas.cerrar', $alerta->id), ['clasificacion' => 'sin_novedad'], $panel)
+            ->assertOk()
+            ->assertJsonPath('data.estado', 'cerrada');
+
+        $this->get(route('panel.analitica.cola-alertas'))->assertSee('No hay alertas pendientes.');
+    }
+
+    public function test_sin_sesion_el_api_de_alertas_responde_401(): void
+    {
+        $alerta = $this->crearAlerta();
+
+        $this->postJson(route('api.v1.alertas.atender', $alerta->id), [], ['Referer' => config('app.url').'/panel'])
+            ->assertUnauthorized();
     }
 
     public function test_no_se_cae_si_mongo_no_responde(): void
     {
-        $this->mock(AlertasLecturaRepository::class)
-            ->shouldReceive('cola')->andThrow(new ConnectionTimeoutException('sin conexión'));
+        $this->mock(AlertaService::class)
+            ->shouldReceive('activas')->andThrow(new ConnectionTimeoutException('sin conexión'));
 
         $this->como(Rol::Vigilante)->get(route('panel.analitica.cola-alertas'))
             ->assertOk()

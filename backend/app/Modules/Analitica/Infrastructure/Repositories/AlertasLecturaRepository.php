@@ -2,7 +2,6 @@
 
 namespace App\Modules\Analitica\Infrastructure\Repositories;
 
-use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use MongoDB\BSON\UTCDateTime;
@@ -47,37 +46,6 @@ class AlertasLecturaRepository
             'falsas_alarmas' => $cerradas['falsa_alarma'] ?? 0,
             'por_zona' => array_column($resultado['por_zona'] ?? [], 'total', '_id'),
         ];
-    }
-
-    /**
-     * Alertas sin cerrar (HU11): primero las abiertas, luego las de mayor prioridad y las más antiguas.
-     *
-     * @return list<array{id: string, prioridad: int, zona: string, camara: ?string, motivo: string, fecha_hora: CarbonImmutable, num_eventos: int, estado: string, atendida_por: ?string}>
-     */
-    public function cola(int $limite = 100): array
-    {
-        // Por orden alfabético "abierta" va antes que "atendida".
-        $documentos = $this->coleccion()->find(
-            ['estado' => ['$in' => ['abierta', 'atendida']]],
-            [...self::TIPOS, 'sort' => ['estado' => 1, 'prioridad' => -1, 'fecha_hora' => 1], 'limit' => $limite],
-        );
-
-        $cola = [];
-        foreach ($documentos as $doc) {
-            $cola[] = [
-                'id' => (string) $doc['_id'],
-                'prioridad' => (int) $doc['prioridad'],
-                'zona' => $doc['zona']['nombre'] ?? '—',
-                'camara' => $doc['camara']['nombre'] ?? null,
-                'motivo' => $doc['motivo'],
-                'fecha_hora' => CarbonImmutable::instance($doc['fecha_hora']->toDateTime()),
-                'num_eventos' => (int) ($doc['num_eventos'] ?? 0),
-                'estado' => $doc['estado'],
-                'atendida_por' => $doc['atendida_por']['nombre'] ?? null,
-            ];
-        }
-
-        return $cola;
     }
 
     private function coleccion(): Collection
