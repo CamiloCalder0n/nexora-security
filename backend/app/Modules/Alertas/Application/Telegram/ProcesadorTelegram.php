@@ -9,7 +9,6 @@ use App\Modules\Alertas\Domain\TransicionInvalida;
 use App\Modules\Alertas\Infrastructure\Repositories\AlertaRepository;
 use App\Modules\Alertas\Infrastructure\Repositories\CuentaTelegramRepository;
 use App\Modules\Alertas\Infrastructure\Telegram\TelegramBotApi;
-use App\Modules\Identidad\Domain\Rol;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -29,8 +28,6 @@ class ProcesadorTelegram
 
     /** Respuestas por chat no vinculado cada 10 min: el spam no gasta el cupo de envío de la Bot API (HU21). */
     private const RESPUESTAS_SIN_VINCULO = 6;
-
-    private const ROLES_QUE_ATIENDEN = [Rol::Vigilante, Rol::Admin];
 
     public function __construct(
         private readonly TelegramBotApi $bot,
@@ -107,7 +104,7 @@ class ProcesadorTelegram
         RateLimiter::clear($limite);
 
         return 'Listo, '.e($usuario->name).'. Esta cuenta quedó vinculada'
-            .(in_array($usuario->rol, self::ROLES_QUE_ATIENDEN, true) ? ' y aquí te llegarán las alertas.' : '.');
+            .($this->servicio->puedeAtender($usuario) ? ' y aquí te llegarán las alertas.' : '.');
     }
 
     private function ayuda(?User $usuario): string
@@ -123,8 +120,8 @@ class ProcesadorTelegram
         $datos = (string) ($consulta['data'] ?? '');
         $usuario = isset($consulta['from']['id']) ? $this->cuentas->activaDelChat((string) $consulta['from']['id']) : null;
 
-        if ($usuario === null || ! in_array($usuario->rol, self::ROLES_QUE_ATIENDEN, true)) {
-            $this->avisar($consultaId, 'Tu cuenta no puede atender alertas.');
+        if ($usuario === null || ! $this->servicio->puedeAtender($usuario)) {
+            $this->avisar($consultaId, AlertaService::SIN_PERMISO);
 
             return;
         }
