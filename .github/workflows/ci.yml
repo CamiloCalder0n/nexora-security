@@ -21,13 +21,24 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    # Con health check, el job espera a que cada servicio responda antes de los tests; si uno no
+    # arranca, falla al inicializar (o por timeout) en vez de dejar 132 tests en rojo.
     services:
       mongo:
-        image: mongo:8
+        # mongo:8 no arranca en los runners de GitHub (kernel 6.19 o más nuevo, SERVER-121912). La 7 no
+        # está afectada (SERVER-125742 la lista como soportada en todos los kernels) y acepta los mismos
+        # validadores $jsonSchema que usa el backend. Local y Atlas siguen en la 8. Se vuelve a la 8
+        # cuando su imagen sea 8.0.30+/8.3.9+ y el runner tenga kernel 7.0.14+ (ver SERVER-136848).
+        image: mongo:7
         ports: ["27017:27017"]
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping: 1}).ok'"
+          --health-interval 3s --health-timeout 5s --health-retries 20
       redis:
         image: redis:7-alpine
         ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 3s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
@@ -98,7 +109,7 @@ jobs:
       - name: Secretos en el diff
         run: |
           if git diff "$BASE"...HEAD -- . ':(exclude)*.example' ':(exclude)*.md' ':(exclude,glob)**/tests/**' \
-            | grep -nP '^\+.*((TOKEN|SECRET|PASSWORD|API_KEY)[A-Z_]*["'"'"']?\s*[:=]\s*["'"'"']?(?![A-Za-z0-9_.]*[(\[])[A-Za-z0-9_./+-]{8,}|\b[0-9]{8,10}:[A-Za-z0-9_-]{35}(?![A-Za-z0-9_-])|mongodb\+srv://[^\s]+:[^\s]+@|postgres(ql)?://[^\s]+:[^\s]+@)'; then
+            | grep -nP '^\+.*((TOKEN|SECRET|PASSWORD|API_KEY)[A-Z_]*["'"'"']?\s*[:=]\s*["'"'"']?(?![A-Za-z0-9_.]*[(\[])(?![A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_])[A-Za-z0-9_./+-]{8,}|\b[0-9]{8,10}:[A-Za-z0-9_-]{35}(?![A-Za-z0-9_-])|mongodb\+srv://[^\s]+:[^\s]+@|postgres(ql)?://[^\s]+:[^\s]+@)'; then
             echo "Parece haber un secreto en el diff."; exit 1
           fi
       - name: Commits sin firmas automáticas
