@@ -15,8 +15,6 @@ use RuntimeException;
  */
 trait LimpiaMongo
 {
-    private const COLECCIONES = ['eventos', 'alertas', 'bitacora'];
-
     private static bool $mongoInstalado = false;
 
     protected function reinstalarMongoDespues(): void
@@ -34,9 +32,10 @@ trait LimpiaMongo
         }
 
         $existentes = iterator_to_array($base->listCollectionNames());
-        if (! self::$mongoInstalado || array_diff(self::COLECCIONES, $existentes)) {
+        $registradas = array_map(fn ($c) => $c->nombre(), iterator_to_array(app()->tagged('nexora.colecciones_mongo')));
+        if (! self::$mongoInstalado || array_diff($registradas, $existentes)) {
             $base->drop();
-            Artisan::call('nexora:mongo-instalar');
+            throw_unless(Artisan::call('nexora:mongo-instalar') === 0, RuntimeException::class, Artisan::output());
             self::$mongoInstalado = true;
 
             return;

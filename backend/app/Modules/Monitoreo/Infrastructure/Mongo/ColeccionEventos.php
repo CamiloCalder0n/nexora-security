@@ -2,6 +2,7 @@
 
 namespace App\Modules\Monitoreo\Infrastructure\Mongo;
 
+use App\Modules\Monitoreo\Domain\Models\Evento;
 use App\Modules\Monitoreo\Domain\ResultadoEvento;
 use App\Support\Mongo\ColeccionMongo;
 
@@ -23,7 +24,7 @@ class ColeccionEventos extends ColeccionMongo
                 'resultado', 'explicado', 'camara', 'zona'],
             'properties' => [
                 'schema_version' => ['bsonType' => self::ENTERO, 'minimum' => 1],
-                'uuid' => ['bsonType' => 'string', 'pattern' => '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'],
+                'uuid' => ['bsonType' => 'string', 'pattern' => '^'.Evento::PATRON_UUID.'$'],
                 'fecha_hora' => ['bsonType' => 'date'],
                 'tipo_objeto' => ['enum' => ['persona', 'vehiculo']],
                 'cantidad' => ['bsonType' => self::ENTERO, 'minimum' => 1, 'maximum' => 50],
@@ -36,7 +37,6 @@ class ColeccionEventos extends ColeccionMongo
                 'registro_id' => ['bsonType' => [...self::ENTERO, 'null']],
                 'alerta_id' => ['bsonType' => ['string', 'null']],
                 'reencolos' => ['bsonType' => self::ENTERO, 'minimum' => 0],
-                'proximo_reencolo' => ['bsonType' => ['date', 'null']],
                 'created_at' => ['bsonType' => 'date'],
                 'updated_at' => ['bsonType' => 'date'],
             ],

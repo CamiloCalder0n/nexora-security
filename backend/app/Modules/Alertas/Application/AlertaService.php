@@ -16,7 +16,6 @@ use App\Modules\Monitoreo\Application\EventoService;
 use App\Modules\Monitoreo\Domain\Events\CamaraSinSenal;
 use App\Modules\Monitoreo\Domain\Models\Evento;
 use App\Modules\Monitoreo\Domain\Models\Zona;
-use App\Modules\Monitoreo\Domain\ResultadoEvento;
 use Closure;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -40,7 +39,7 @@ class AlertaService
         return $this->enLockDeZona($zona->id, function () use ($evento, $zona, $regla, $resultado) {
             // Dos jobs del mismo evento (el original lento y su reencolado) pueden llegar aquí: el
             // segundo, ya dentro del lock, ve que el primero lo resolvió y no hace nada más.
-            if ($evento->refresh()->resultado !== ResultadoEvento::Pendiente) {
+            if (! $this->eventos->siguePendiente($evento)) {
                 return $this->alertas->conEvento($evento->id);
             }
 
@@ -54,7 +53,7 @@ class AlertaService
 
             if ($abierta !== null) {
                 $this->agregarEvento($abierta, $evento);
-                $this->eventos->marcar($evento, ResultadoEvento::Suprimido, ['alerta_id' => $abierta->id]);
+                $this->eventos->marcarSuprimido($evento, $abierta->id);
 
                 return $abierta;
             }
@@ -91,7 +90,7 @@ class AlertaService
         if ($alerta->estado === EstadoAlerta::Abierta) {
             AlertaCreada::dispatch($alerta->id);
         }
-        $this->eventos->marcar($evento, ResultadoEvento::Alerta, ['alerta_id' => $alerta->id]);
+        $this->eventos->marcarAlerta($evento, $alerta->id);
 
         return $alerta;
     }
@@ -102,7 +101,7 @@ class AlertaService
         if ($alerta->eventos_ids[0] === $evento->id) {
             return $this->completarCreacion($alerta, $evento, $motivo);
         }
-        $this->eventos->marcar($evento, ResultadoEvento::Suprimido, ['alerta_id' => $alerta->id]);
+        $this->eventos->marcarSuprimido($evento, $alerta->id);
 
         return $alerta;
     }
@@ -118,12 +117,12 @@ class AlertaService
 
             $desde = $ultimaConexion->copy()->setTimezone(config('app.timezone'))->format('H:i');
             $motivo = "{$caida->camaraNombre} ({$caida->zonaNombre}) sin señal desde las {$desde}: "
-                .'no llega el heartbeat del agente hace más de '.config('monitoreo.minutos_sin_senal').' min';
+                ."no llega el heartbeat del agente hace más de {$caida->minutosSinSenal} min";
 
             $alerta = $this->alertas->crear([
                 'fecha_hora' => now(),
                 'tipo' => TipoAlerta::CamaraSinSenal,
-                'prioridad' => config('alertas.prioridad_alta'),
+                'prioridad' => Alerta::PRIORIDAD_MAX,
                 'motivo' => $motivo,
                 'regla' => 'camara_sin_heartbeat',
                 'camara' => ['camara_id' => $caida->camaraId, 'nombre' => $caida->camaraNombre],
@@ -146,7 +145,7 @@ class AlertaService
         $tope = config('alertas.max_nivel_escalamiento');
         $escaladas = 0;
 
-        foreach ($this->alertas->paraEscalar(config('alertas.prioridad_alta'), now()->subMinutes($minutos), $tope) as $candidata) {
+        foreach ($this->alertas->paraEscalar(Alerta::PRIORIDAD_MAX, now()->subMinutes($minutos), $tope) as $candidata) {
             $escaladas += $this->enLockDeZona($candidata->zona['zona_id'], function () use ($candidata, $minutos, $tope) {
                 // Se relee dentro del lock: la pudieron atender mientras se recorría la lista.
                 $alerta = $candidata->fresh();

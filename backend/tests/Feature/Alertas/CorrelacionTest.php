@@ -5,10 +5,10 @@ namespace Tests\Feature\Alertas;
 use App\Models\User;
 use App\Modules\Alertas\Application\AlertaService;
 use App\Modules\Alertas\Application\CorrelacionService;
+use App\Modules\Alertas\Application\Reglas\ReglaDeteccion;
 use App\Modules\Alertas\Domain\Events\AlertaCreada;
 use App\Modules\Alertas\Domain\Models\Alerta;
 use App\Modules\Alertas\Domain\Models\EntradaBitacora;
-use App\Modules\Alertas\Domain\Reglas\ReglaDeteccion;
 use App\Modules\Alertas\Domain\Reglas\ResultadoRegla;
 use App\Modules\Identidad\Domain\Rol;
 use App\Modules\Monitoreo\Application\EventoService;
@@ -17,6 +17,7 @@ use App\Modules\Monitoreo\Domain\Models\Camara;
 use App\Modules\Monitoreo\Domain\Models\Evento;
 use App\Modules\Monitoreo\Domain\Models\Franja;
 use App\Modules\Monitoreo\Domain\Models\Zona;
+use App\Modules\Monitoreo\Domain\ResultadoEvento;
 use App\Modules\Porteria\Application\Contracts\ConsultaRegistrosPorteria;
 use App\Modules\Porteria\Domain\Models\RegistroPorteria;
 use Carbon\CarbonInterface;
@@ -239,13 +240,14 @@ class CorrelacionTest extends TestCase
 
     public function test_un_evento_que_perdio_su_job_termina_correlacionado_al_reencolarlo(): void
     {
-        Event::fake([AlertaCreada::class, EventoRegistrado::class]);  // la ingesta no encola nada: job "perdido"
-        $evento = $this->enviarEvento();
+        // La ingesta no encola nada: el job se "pierde".
+        $evento = Event::fakeFor(fn () => $this->enviarEvento(), [EventoRegistrado::class]);
         $this->assertSame('pendiente', $evento->resultado->value);
-        $evento->forceFill(['created_at' => now()->subMinutes(5)])->save();
+        Carbon::setTestNow(now()->addMinutes(5));
 
         $this->artisan('nexora:reencolar-pendientes')->assertSuccessful();  // listener real, cola sync
 
+        Carbon::setTestNow();
         $this->assertSame('alerta', $evento->fresh()->resultado->value);
         $this->assertSame(1, Alerta::count());
     }
@@ -260,6 +262,20 @@ class CorrelacionTest extends TestCase
         $this->assertSame('alerta', $persona->resultado->value);
         $this->assertSame('explicado', $vehiculo->resultado->value);
         $this->assertSame(5, $vehiculo->registro_id);
+    }
+
+    public function test_un_job_paralelo_no_pisa_el_resultado_que_ya_dejo_el_otro(): void
+    {
+        $evento = $this->enviarEvento();  // el job original lo dejó en una alerta
+        $copia = Evento::find($evento->id);
+        $copia->resultado = ResultadoEvento::Pendiente;  // el reencolado lo leyó antes
+
+        app(EventoService::class)->marcarExplicado($copia, 77);  // y luego encuentra un registro tardío
+
+        $guardado = $evento->fresh();
+        $this->assertSame('alerta', $guardado->resultado->value);
+        $this->assertNull($guardado->registro_id);
+        $this->assertSame('alerta', $copia->resultado->value);
     }
 
     public function test_un_evento_ya_resuelto_no_se_vuelve_a_correlacionar(): void
@@ -278,11 +294,6 @@ class ReglaVehiculosDeNoche implements ReglaDeteccion
     public function nombre(): string
     {
         return 'vehiculos_de_noche';
-    }
-
-    public function aplica(Evento $evento): bool
-    {
-        return true;
     }
 
     public function evaluar(Evento $evento, Zona $zona): ResultadoRegla

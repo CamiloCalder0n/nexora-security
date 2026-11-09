@@ -17,7 +17,6 @@ use App\Modules\Alertas\Infrastructure\Mongo\ColeccionAlertas;
 use App\Modules\Alertas\Infrastructure\Mongo\ColeccionBitacora;
 use App\Modules\Alertas\Infrastructure\Telegram\TelegramBotApi;
 use App\Modules\Monitoreo\Domain\Events\CamaraSinSenal;
-use App\Modules\Monitoreo\Domain\Events\EventoPendienteReencolado;
 use App\Modules\Monitoreo\Domain\Events\EventoRegistrado;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Event;
@@ -41,7 +40,7 @@ class AlertasServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/Infrastructure/Database/Migrations');
         $this->loadViewsFrom(__DIR__.'/Resources/views', 'alertas');
 
-        Event::listen([EventoRegistrado::class, EventoPendienteReencolado::class], CorrelacionJob::class);
+        Event::listen(EventoRegistrado::class, CorrelacionJob::class);
         Event::listen(CamaraSinSenal::class, AlertarCamaraSinSenal::class);
         Event::listen([AlertaCreada::class, AlertaEscalada::class], AvisarPorTelegram::class);
 

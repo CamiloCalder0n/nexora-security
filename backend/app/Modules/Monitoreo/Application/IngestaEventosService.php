@@ -2,7 +2,6 @@
 
 namespace App\Modules\Monitoreo\Application;
 
-use App\Modules\Monitoreo\Domain\Events\EventoPendienteReencolado;
 use App\Modules\Monitoreo\Domain\Events\EventoRegistrado;
 use App\Modules\Monitoreo\Infrastructure\Repositories\CamaraRepository;
 use App\Modules\Monitoreo\Infrastructure\Repositories\EventoRepository;
@@ -11,6 +10,10 @@ use Illuminate\Support\Facades\Log;
 
 class IngestaEventosService
 {
+    private const MAX_REENCOLOS = 10;
+
+    private const REENCOLAR_POR_CORRIDA = 500;
+
     public function __construct(
         private readonly EventoRepository $eventos,
         private readonly CamaraRepository $camaras,
@@ -46,25 +49,23 @@ class IngestaEventosService
     }
 
     /**
-     * Red de seguridad: si un job se perdió (Redis reiniciado sin persistencia, worker caído),
-     * el evento se queda en pendiente para siempre. Se reencola con espera creciente (2, 4, 8…
-     * minutos) y como máximo `max_reencolos` veces; si aun así no sale, se registra un error
-     * para revisarlo a mano. La correlación es idempotente.
+     * Red de seguridad: si un job se perdió (worker caído, Redis reiniciado), el evento se queda en
+     * pendiente. Cada N minutos sin cambios se vuelve a encolar, como máximo `MAX_REENCOLOS` veces:
+     * con N = 2, el valor por defecto, cubre una caída de unos 20 min de PostgreSQL o de portería.
+     * Si aun así no sale, queda un error en el log; para recuperarlo a mano dentro de las 24 h
+     * siguientes a su llegada, poner `reencolos` en 0. La correlación es idempotente.
      */
     public function reencolarPendientes(): int
     {
-        $minutos = config('monitoreo.minutos_reencolar');
-        $maximo = config('monitoreo.max_reencolos');
-        $pendientes = $this->eventos->pendientesParaReencolar(
-            now()->subHours(24), now()->subMinutes($minutos), $maximo, config('monitoreo.reencolar_por_minuto'),
+        $pendientes = $this->eventos->pendientesSinCambiosDesde(
+            now()->subMinutes(config('monitoreo.minutos_reencolar')), self::MAX_REENCOLOS, self::REENCOLAR_POR_CORRIDA,
         );
 
         foreach ($pendientes as $evento) {
-            $intento = ($evento->reencolos ?? 0) + 1;
-            $this->eventos->anotarReencolo($evento, now()->addMinutes($minutos * 2 ** $intento));
-            EventoPendienteReencolado::dispatch($evento->id);
+            $intento = $this->eventos->anotarReencolo($evento);
+            EventoRegistrado::dispatch($evento->id);
 
-            if ($intento === $maximo) {
+            if ($intento === self::MAX_REENCOLOS) {
                 Log::error('Último reencolado de un evento que sigue sin correlacionar; revisar si no sale', ['evento' => $evento->id]);
             }
         }

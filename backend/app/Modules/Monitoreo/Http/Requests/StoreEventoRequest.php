@@ -2,6 +2,7 @@
 
 namespace App\Modules\Monitoreo\Http\Requests;
 
+use App\Modules\Monitoreo\Domain\Models\Evento;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Reglas de `POST /agente/eventos` según docs/CONTRATO_API_AGENTE.md. */
@@ -25,8 +26,7 @@ class StoreEventoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Forma canónica (la misma que exige el validador de Mongo): sin llaves ni urn:uuid:.
-            'uuid' => ['required', 'string', 'regex:/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/'],
+            'uuid' => ['required', 'string', 'regex:/^'.Evento::PATRON_UUID.'\z/'],
             // strict: el agente manda JSON con números; ni true ni "5" cuentan como entero.
             'camara_id' => ['required', 'integer:strict', 'exists:camaras,id'],
             'tipo_objeto' => ['required', 'in:persona,vehiculo'],

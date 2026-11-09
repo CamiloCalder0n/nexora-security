@@ -16,11 +16,14 @@ use MongoDB\Laravel\Eloquent\Model;
 #[Table('eventos')]
 #[Fillable([
     'schema_version', 'uuid', 'fecha_hora', 'tipo_objeto', 'cantidad', 'confianza', 'ruta_evidencia',
-    'resultado', 'explicado', 'camara', 'zona', 'registro_id', 'alerta_id', 'reencolos', 'proximo_reencolo',
+    'resultado', 'explicado', 'camara', 'zona', 'registro_id', 'alerta_id', 'reencolos',
 ])]
 class Evento extends Model
 {
     public const SCHEMA_VERSION = 1;
+
+    /** uuid v4 en forma canónica (minúsculas, sin llaves): lo exigen la ingesta y el validador de Mongo. */
+    public const PATRON_UUID = '[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}';
 
     protected $attributes = [
         'schema_version' => self::SCHEMA_VERSION,
@@ -34,7 +37,6 @@ class Evento extends Model
     {
         return [
             'fecha_hora' => 'datetime',
-            'proximo_reencolo' => 'datetime',
             'reencolos' => 'integer',
             'cantidad' => 'integer',
             'confianza' => 'float',

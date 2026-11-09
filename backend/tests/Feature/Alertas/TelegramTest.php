@@ -165,7 +165,7 @@ class TelegramTest extends TestCase
     {
         $this->vinculado(Rol::Vigilante, '5101');
 
-        event(new CamaraSinSenal(7, 'CAM-07', 1, 'Parqueadero', now()->subMinutes(8)->toIso8601String()));
+        event(new CamaraSinSenal(7, 'CAM-07', 1, 'Parqueadero', now()->subMinutes(8)->toIso8601String(), 5));
 
         $enviados = $this->enviados('sendMessage');
         $this->assertCount(1, $enviados);

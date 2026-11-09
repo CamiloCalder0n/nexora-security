@@ -7,8 +7,6 @@ return [
     // Minutos sin heartbeat para dar por caída una cámara (el agente late cada 60 s, HU13).
     'minutos_sin_senal' => (int) env('CAMARA_MINUTOS_SIN_SENAL', 5),
 
-    // Un evento que sigue en pendiente pasados N minutos perdió su job: se vuelve a encolar.
+    // Un evento que sigue en pendiente N minutos sin cambios perdió su job: se vuelve a encolar.
     'minutos_reencolar' => (int) env('EVENTOS_MINUTOS_REENCOLAR', 2),
-    'reencolar_por_minuto' => 500,
-    'max_reencolos' => 5,
 ];
