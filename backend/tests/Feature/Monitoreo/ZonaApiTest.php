@@ -68,6 +68,22 @@ class ZonaApiTest extends TestCase
             ->assertJsonCount(1, 'data');
     }
 
+    public function test_index_filtro_invalido_es_422(): void
+    {
+        $this->comoAdmin();
+
+        $this->getJson(route('api.v1.monitoreo.zonas.index', ['tipo' => 'inventado']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('tipo');
+
+        $this->getJson(route('api.v1.monitoreo.zonas.index', ['activa' => 'quizas']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('activa');
+
+        $this->getJson(route('api.v1.monitoreo.zonas.index', ['tipo' => 'parqueadero', 'activa' => '1']))
+            ->assertOk();
+    }
+
     public function test_store_crea_con_franjas_201(): void
     {
         $this->comoAdmin();

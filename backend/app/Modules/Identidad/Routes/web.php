@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Identidad\Http\Controllers\Web\LoginController;
+use App\Modules\Identidad\Http\Controllers\Web\UsuarioController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -14,5 +15,6 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::prefix('panel/identidad')->name('panel.identidad.')->middleware(['auth', 'rol:admin'])->group(function () {
-    //
+    Route::get('usuarios', [UsuarioController::class, 'index'])->name('usuarios.index');
+    Route::patch('usuarios/{usuario}/activo', [UsuarioController::class, 'cambiarActivo'])->name('usuarios.activo');
 });

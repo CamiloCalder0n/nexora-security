@@ -7,6 +7,7 @@ use App\Modules\Porteria\Domain\Models\Autorizacion;
 use App\Modules\Porteria\Domain\Models\Residente;
 use App\Modules\Porteria\Domain\Models\Unidad;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Carbon;
 
 /** @extends Factory<Autorizacion> */
 class AutorizacionFactory extends Factory
@@ -24,7 +25,8 @@ class AutorizacionFactory extends Factory
             'visitante_documento' => fake()->numerify('##########'),
             'placa' => fake()->optional(0.3)->bothify('???###'),
             'valida_desde' => $desde,
-            'valida_hasta' => $desde->copy()->addHours(fake()->numberBetween(4, 48)),
+            // Sobre el valida_desde final (si el test lo cambia) y nunca en el pasado: una vigente no nace vencida.
+            'valida_hasta' => fn (array $atributos) => Carbon::parse($atributos['valida_desde'])->max(now())->addHours(fake()->numberBetween(4, 48)),
             'estado' => EstadoAutorizacion::Vigente,
             'usada_at' => null,
         ];
