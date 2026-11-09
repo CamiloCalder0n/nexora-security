@@ -20,7 +20,8 @@ services:
 
   worker:
     <<: *php
-    command: php artisan queue:work --tries=3 --backoff=5
+    # Primero la cola telegram: los avisos no esperan detrás de una ráfaga de correlaciones (HU21).
+    command: php artisan queue:work --queue=telegram,default --tries=3 --backoff=5
     # Si Redis o la BD se caen, queue:work termina con error: Docker lo vuelve a levantar.
     restart: unless-stopped
 

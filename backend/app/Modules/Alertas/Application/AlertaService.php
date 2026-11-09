@@ -135,18 +135,23 @@ class AlertaService
         });
     }
 
-    /** HU12: las de prioridad alta sin atender suben un nivel cada N min; devuelve cuántas subieron. */
+    /**
+     * HU12: las de prioridad alta sin atender suben un nivel cada N min, hasta el nivel tope (si no,
+     * una alerta olvidada avisaría cada N min para siempre). Devuelve cuántas subieron.
+     */
     public function escalarVencidas(): int
     {
         $minutos = config('alertas.minutos_escalar');
+        $tope = config('alertas.max_nivel_escalamiento');
         $escaladas = 0;
 
-        foreach ($this->alertas->paraEscalar(Alerta::PRIORIDAD_MAX, now()->subMinutes($minutos)) as $candidata) {
-            $escaladas += $this->enLockDeZona($candidata->zona['zona_id'], function () use ($candidata, $minutos) {
+        foreach ($this->alertas->paraEscalar(Alerta::PRIORIDAD_MAX, now()->subMinutes($minutos), $tope) as $candidata) {
+            $escaladas += $this->enLockDeZona($candidata->zona['zona_id'], function () use ($candidata, $minutos, $tope) {
                 // Se relee dentro del lock: la pudieron atender mientras se recorría la lista.
                 $alerta = $candidata->fresh();
                 $limite = now()->subMinutes($minutos);
-                if ($alerta->estado !== EstadoAlerta::Abierta || ($alerta->fecha_escalamiento ?? $alerta->fecha_hora)->gt($limite)) {
+                if ($alerta->estado !== EstadoAlerta::Abierta || $alerta->nivel_escalamiento >= $tope
+                    || ($alerta->fecha_escalamiento ?? $alerta->fecha_hora)->gt($limite)) {
                     return 0;
                 }
 

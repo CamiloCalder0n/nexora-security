@@ -3,12 +3,19 @@
 namespace App\Modules\Alertas;
 
 use App\Modules\Alertas\Application\MotorReglas;
+use App\Modules\Alertas\Domain\Events\AlertaCreada;
+use App\Modules\Alertas\Domain\Events\AlertaEscalada;
+use App\Modules\Alertas\Infrastructure\Console\CodigoTelegram;
+use App\Modules\Alertas\Infrastructure\Console\ConfigurarTelegram;
 use App\Modules\Alertas\Infrastructure\Console\EscalarAlertas;
+use App\Modules\Alertas\Infrastructure\Console\EscucharTelegram;
 use App\Modules\Alertas\Infrastructure\Console\VerificarBitacora;
 use App\Modules\Alertas\Infrastructure\Listeners\AlertarCamaraSinSenal;
+use App\Modules\Alertas\Infrastructure\Listeners\AvisarPorTelegram;
 use App\Modules\Alertas\Infrastructure\Listeners\CorrelacionJob;
 use App\Modules\Alertas\Infrastructure\Mongo\ColeccionAlertas;
 use App\Modules\Alertas\Infrastructure\Mongo\ColeccionBitacora;
+use App\Modules\Alertas\Infrastructure\Telegram\TelegramBotApi;
 use App\Modules\Monitoreo\Domain\Events\CamaraSinSenal;
 use App\Modules\Monitoreo\Domain\Events\EventoRegistrado;
 use Illuminate\Console\Scheduling\Schedule;
@@ -25,6 +32,7 @@ class AlertasServiceProvider extends ServiceProvider
         $this->app->bind(MotorReglas::class, fn ($app) => new MotorReglas(
             array_map(fn (string $regla) => $app->make($regla), config('alertas.reglas')),
         ));
+        $this->app->singleton(TelegramBotApi::class, fn () => new TelegramBotApi(config('alertas.telegram.token')));
     }
 
     public function boot(): void
@@ -34,9 +42,13 @@ class AlertasServiceProvider extends ServiceProvider
 
         Event::listen(EventoRegistrado::class, CorrelacionJob::class);
         Event::listen(CamaraSinSenal::class, AlertarCamaraSinSenal::class);
+        Event::listen([AlertaCreada::class, AlertaEscalada::class], AvisarPorTelegram::class);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([EscalarAlertas::class, VerificarBitacora::class]);
+            $this->commands([
+                EscalarAlertas::class, VerificarBitacora::class,
+                ConfigurarTelegram::class, EscucharTelegram::class, CodigoTelegram::class,
+            ]);
         }
 
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule) {
