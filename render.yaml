@@ -1,0 +1,40 @@
+# Blueprint de Render: un Web Service Docker (plan gratis) con web, worker y scheduler adentro.
+# Los valores con sync: false se cargan a mano en el panel de Render; nunca van en el repo.
+services:
+  - type: web
+    name: nexora-security
+    runtime: docker
+    plan: free
+    dockerfilePath: ./docker/produccion/Dockerfile
+    dockerContext: .
+    # Sin healthCheckPath: Render lo llamaría cada ~5 s y cada /up le hace un PING a Upstash (unos 500 mil
+    # comandos al mes). /up queda para diagnosticar a mano o desde un monitor externo con menos frecuencia.
+    envVars:
+      - key: APP_NAME
+        value: Nexora Security
+      - key: APP_KEY
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_URL # Neon: postgresql://...?sslmode=require
+        sync: false
+      - key: MONGODB_URI # Atlas: mongodb+srv://...
+        sync: false
+      - key: MONGODB_DATABASE
+        value: nexora_security
+      - key: REDIS_URL # Upstash: rediss://...
+        sync: false
+      # Las colas en PostgreSQL: revisarlas cada pocos segundos agotaría la cuota gratis de Upstash.
+      # Redis (Upstash) queda para caché, locks y rate limit.
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: CACHE_STORE
+        value: redis
+      - key: SESSION_DRIVER
+        value: database
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET # 16+ caracteres [A-Za-z0-9_-], por ejemplo: openssl rand -hex 24
+        sync: false
