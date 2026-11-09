@@ -30,7 +30,7 @@ class CorrelacionService
         $zona = $this->eventos->zonaDe($evento);
 
         if (! $zona->estaVigilada($evento->fecha_hora)) {
-            $this->eventos->marcar($evento, ResultadoEvento::FueraFranja);
+            $this->eventos->marcarFueraFranja($evento);
 
             return;
         }
@@ -47,10 +47,7 @@ class CorrelacionService
         [$regla, $resultado] = $decision;
 
         if ($resultado->explicado) {
-            $this->eventos->marcar($evento, ResultadoEvento::Explicado, [
-                'explicado' => true,
-                'registro_id' => $resultado->registroId,
-            ]);
+            $this->eventos->marcarExplicado($evento, $resultado->registroId);
 
             return;
         }

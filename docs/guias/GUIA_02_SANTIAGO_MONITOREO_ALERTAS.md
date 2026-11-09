@@ -59,7 +59,7 @@ Rate limit con nombre `agente` (60 por minuto por token) en `AppServiceProvider`
 
 ## Paso 3 · Motor de reglas y correlación
 
-**Reglas enchufables (HU31):** interfaz `Alertas\Domain\Reglas\ReglaDeteccion` con `aplica(Evento): bool` y `evaluar(Evento): ResultadoRegla`. Las reglas se registran con un *tag* del contenedor (`nexora.reglas`): agregar una regla nueva = crear una clase y registrarla, **sin tocar el motor**. Regla inicial: `SinRegistroEnPorteria`.
+**Reglas enchufables (HU31):** interfaz `Alertas\Application\Reglas\ReglaDeteccion` con `evaluar(Evento, Zona): ResultadoRegla`; si la regla no aplica al evento devuelve `ResultadoRegla::sinDecision()` y el motor sigue con la siguiente. Las reglas se listan en `alertas.reglas` (`Modules/Alertas/config.php`): agregar una regla nueva = crear una clase y ponerla en la lista, **sin tocar el motor**. Regla inicial: `SinRegistroEnPorteria`.
 
 **`CorrelacionService`** (lo llama `CorrelacionJob`):
 1. Carga la zona de la cámara (PostgreSQL). Si `! $zona->estaVigilada($evento->fecha_hora)` → `fuera_franja`, fin.
@@ -72,7 +72,7 @@ Rate limit con nombre `agente` (60 por minuto por token) en `AppServiceProvider`
 - `cerrar(alerta, usuario, clasificacion, observacion)`: sin clasificación → **422**; `incidente` sin observación → **422** (HU03).
 - Cada cambio de estado escribe en la **bitácora**.
 
-**`BitacoraService`** (HU28): `hash = sha256(hash_anterior + fecha_hora + tipo + descripcion + estado_nuevo + usuario_id)`. Comando `php artisan nexora:verificar-bitacora` que recorre la cadena y dice "OK" o en qué entrada se rompió.
+**`BitacoraService`** (HU28): `hash = sha256(json([hash_anterior, secuencia, fecha_hora, tipo, descripcion, estado_anterior, estado_nuevo, usuario, alerta_id]))`: cubre todos los campos y el JSON separa uno de otro. Lo que una cadena de hashes no detecta es que borren las últimas entradas. Comando `php artisan nexora:verificar-bitacora` que recorre la cadena y dice "OK" o en qué entrada se rompió.
 
 **Tests:** un evento con registro en la ventana → explicado; sin registro → alerta; dos eventos en 5 min → 1 alerta con `num_eventos = 2`; cerrar sin clasificar → 422; alterar una entrada → el verificador lo detecta.
 

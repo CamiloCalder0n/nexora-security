@@ -120,6 +120,25 @@ class CicloAlertaTest extends TestCase
             ->assertFailed();
     }
 
+    public function test_mover_una_entrada_a_otra_alerta_o_cambiar_quien_la_hizo_lo_detecta_el_verificador(): void
+    {
+        $bitacora = app(BitacoraService::class);
+        $entrada = $bitacora->registrar('alerta_atendida', 'Atendida', 'abierta', 'atendida', $this->vigilante, 'alerta-a');
+
+        foreach ([
+            ['alerta_id' => 'alerta-b'],
+            ['estado_anterior' => 'cerrada'],
+            ['usuario' => [...$entrada->usuario, 'nombre' => 'Otra persona']],
+        ] as $cambio) {
+            $original = $entrada->only(array_keys($cambio));
+            $entrada->update($cambio);
+            $this->artisan('nexora:verificar-bitacora')->assertFailed();
+            $entrada->update($original);
+        }
+
+        $this->artisan('nexora:verificar-bitacora')->assertSuccessful();
+    }
+
     public function test_borrar_una_entrada_lo_detecta_el_verificador(): void
     {
         $bitacora = app(BitacoraService::class);

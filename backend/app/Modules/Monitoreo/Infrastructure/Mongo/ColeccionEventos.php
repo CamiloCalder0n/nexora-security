@@ -36,7 +36,6 @@ class ColeccionEventos extends ColeccionMongo
                 'registro_id' => ['bsonType' => [...self::ENTERO, 'null']],
                 'alerta_id' => ['bsonType' => ['string', 'null']],
                 'reencolos' => ['bsonType' => self::ENTERO, 'minimum' => 0],
-                'proximo_reencolo' => ['bsonType' => ['date', 'null']],
                 'created_at' => ['bsonType' => 'date'],
                 'updated_at' => ['bsonType' => 'date'],
             ],

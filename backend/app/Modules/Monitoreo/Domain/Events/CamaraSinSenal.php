@@ -15,5 +15,6 @@ class CamaraSinSenal
         public readonly int $zonaId,
         public readonly string $zonaNombre,
         public readonly string $ultimaConexion,
+        public readonly int $minutosSinSenal,
     ) {}
 }

@@ -2,7 +2,7 @@
 
 namespace App\Modules\Alertas\Application;
 
-use App\Modules\Alertas\Domain\Reglas\ReglaDeteccion;
+use App\Modules\Alertas\Application\Reglas\ReglaDeteccion;
 use App\Modules\Alertas\Domain\Reglas\ResultadoRegla;
 use App\Modules\Monitoreo\Domain\Models\Evento;
 use App\Modules\Monitoreo\Domain\Models\Zona;
@@ -17,9 +17,6 @@ class MotorReglas
     public function evaluar(Evento $evento, Zona $zona): ?array
     {
         foreach ($this->reglas as $regla) {
-            if (! $regla->aplica($evento)) {
-                continue;
-            }
             $resultado = $regla->evaluar($evento, $zona);
             if ($resultado->decide) {
                 return [$regla, $resultado];

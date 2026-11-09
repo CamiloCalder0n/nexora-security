@@ -3,7 +3,6 @@
 namespace App\Modules\Alertas\Application\Reglas;
 
 use App\Modules\Alertas\Domain\Models\Alerta;
-use App\Modules\Alertas\Domain\Reglas\ReglaDeteccion;
 use App\Modules\Alertas\Domain\Reglas\ResultadoRegla;
 use App\Modules\Monitoreo\Domain\Models\Evento;
 use App\Modules\Monitoreo\Domain\Models\Zona;
@@ -17,11 +16,6 @@ class SinRegistroEnPorteria implements ReglaDeteccion
     public function nombre(): string
     {
         return 'sin_registro_en_porteria';
-    }
-
-    public function aplica(Evento $evento): bool
-    {
-        return in_array($evento->tipo_objeto, ['persona', 'vehiculo'], true);
     }
 
     public function evaluar(Evento $evento, Zona $zona): ResultadoRegla
