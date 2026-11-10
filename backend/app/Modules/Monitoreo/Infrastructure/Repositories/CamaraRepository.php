@@ -37,4 +37,10 @@ class CamaraRepository
     {
         $camara->save();
     }
+
+    /** Deja todas las cámaras activas con señal de ahora. Devuelve cuántas son. */
+    public function activarTodas(): int
+    {
+        return Camara::query()->update(['estado' => EstadoCamara::Activa, 'ultima_conexion' => now()]);
+    }
 }

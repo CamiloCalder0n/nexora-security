@@ -21,6 +21,7 @@
         ],
         'Monitoreo' => [
             ['panel.monitoreo.zonas.index', 'Zonas', 'geo-alt', [Rol::Admin]],
+            ['panel.monitoreo.eventos.index', 'Eventos en vivo', 'broadcast', [Rol::Admin, Rol::Vigilante]],
             ['panel.analitica.cola-alertas', 'Cola de alertas', 'bell-fill', [Rol::Vigilante, Rol::Admin]],
             ['panel.alertas.index', 'Alertas', 'bell', [Rol::Admin, Rol::Vigilante, Rol::Consejo]],
         ],

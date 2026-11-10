@@ -49,6 +49,12 @@ class EventoRepository
         return $evento->reencolos;
     }
 
+    /** Los últimos eventos recibidos, el más reciente primero. */
+    public function recientes(int $limite): Collection
+    {
+        return Evento::orderByDesc('fecha_hora')->orderByDesc('_id')->limit($limite)->get();
+    }
+
     public function buscar(string $id): ?Evento
     {
         return Evento::find($id);
