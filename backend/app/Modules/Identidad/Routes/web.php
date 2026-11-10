@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
     Route::get('login', [LoginController::class, 'mostrar'])->name('login');
-    Route::post('login', [LoginController::class, 'entrar'])->middleware('throttle:10,1')->name('login.entrar');
+    Route::post('login', [LoginController::class, 'entrar'])->middleware('throttle:login')->name('login.entrar');
 });
 
 Route::middleware('auth')->group(function () {

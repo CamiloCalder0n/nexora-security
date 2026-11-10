@@ -47,14 +47,18 @@ class AutenticacionService
         return $usuario;
     }
 
+    /** Horas de vida del token de una persona. El del agente no vence: corre sin nadie que vuelva a entrar. */
+    public const HORAS_TOKEN_USUARIO = 12;
+
     /** @return array{token: string, usuario: User} */
     public function emitirToken(string $email, string $password, string $dispositivo, ?Rol $soloRol = null): array
     {
         $usuario = $this->validarCredenciales($email, $password, $soloRol);
-        $habilidades = $usuario->rol === Rol::Agente ? ['agente'] : ['*'];
+        $esAgente = $usuario->rol === Rol::Agente;
+        $vence = $esAgente ? null : now()->addHours(self::HORAS_TOKEN_USUARIO);
 
         return [
-            'token' => $usuario->createToken($dispositivo, $habilidades)->plainTextToken,
+            'token' => $usuario->createToken($dispositivo, $esAgente ? ['agente'] : ['*'], $vence)->plainTextToken,
             'usuario' => $usuario,
         ];
     }
