@@ -6,7 +6,7 @@ Guion de unos 15 minutos que sirve para las 4 materias. Se sigue **en este orden
 
 ```bash
 docker compose up -d
-docker compose exec app php artisan nexora:demo-preparar        # cierra alertas abiertas y deja las cámaras activas
+docker compose exec app php artisan nexora:demo-preparar        # cierra alertas abiertas y deja activas solo CAM-01 y CAM-02
 docker compose exec app php artisan nexora:telegram-codigo vigilante@nexora.test
 docker compose exec app php artisan nexora:telegram-escuchar    # en otra terminal, si no hay webhook
 ```
@@ -24,7 +24,10 @@ docker compose exec app php artisan nexora:telegram-escuchar    # en otra termin
 Deja el sistema listo **sin borrar datos**:
 
 - Cierra como `sin_novedad` todas las alertas abiertas o atendidas. Cada cierre pasa por `AlertaService` y queda en la bitácora con su hash encadenado; al final corre `nexora:verificar-bitacora`.
-- Pone todas las cámaras en `activa` con `ultima_conexion = now`.
+- Deja activas, con `ultima_conexion = now`, solo las cámaras de `--camaras` (por defecto `1,2`: CAM-01 y CAM-02, las del guion) y pone **todas las demás en `inactiva`**. Una cámara activa sin agente que le mande heartbeat pasa a "sin señal" a los 5 minutos y abre una alerta en plena demo; las inactivas no se revisan.
+- **Ojo con las que quedan activas:** también ellas pasan a "sin señal" si su agente no les manda heartbeat en 5 minutos (el reloj arranca con `ultima_conexion = now`). Por eso el paso 1 del guion vuelve a correr el comando justo antes de arrancar el agente; si entre el paso 1 y el video pasan más de 5 minutos, correrlo otra vez. Si aparece una alerta "sin señal" de CAM-01 tras detener su agente con Ctrl+C, se explica como lo que es (monitoreo de cámaras caídas) y se cierra.
+- Si se va a usar otra cámara, incluirla: `nexora:demo-preparar --camaras=1,2,7`. Con un id que no existe o mal escrito falla sin cambiar nada.
+- Una cámara inactiva sigue aceptando eventos, pero el agente avisa al arrancar que "no está asignada" y no sale en la lista de cámaras a vigilar.
 - Al empezar muestra a qué hosts de PostgreSQL, MongoDB y Redis se conecta, para ver si va contra local o contra la nube.
 
 **Contra la nube (Render, Atlas, Upstash…):** se le pasan las URLs por variables, sin tocar `backend/.env`. Con `APP_ENV=production` pide confirmación; `--force` la salta.
@@ -46,7 +49,7 @@ Las URLs reales están en el panel de Render; no se copian a ningún archivo del
 
 | # | Qué se hace | Qué debe pasar | Materias |
 |---|---|---|---|
-| 1 | **Preparar:** `nexora:demo-preparar` (ver arriba). Mostrar *Cola de alertas* vacía. | "N alertas cerradas", todas las cámaras activas y la bitácora íntegra. | BD2 (bitácora con hash), Arq (comando de operación) |
+| 1 | **Preparar:** `nexora:demo-preparar` (ver arriba). Mostrar *Cola de alertas* vacía. | "N alertas cerradas", "2 cámaras activas: CAM-01…, CAM-02…", las demás inactivas y la bitácora íntegra. | BD2 (bitácora con hash), Arq (comando de operación) |
 | 2 | **Registrar el ingreso:** el vigilante abre *Registrar ingreso* y registra un domiciliario hacia la zona **Acceso peatonal principal** con **3 personas**. | El ingreso aparece en *Ingresos*. Desde ahora y por 10 minutos (ventana de correlación de la zona) esa zona tiene quién explique hasta 3 personas. | Backend (Portería, Form Requests), BD2 (PostgreSQL) |
 | 3 | **Video:** en `agente/`, `python -m nexora_agente --fuente videos/edificio.mp4 --camara-id 1` (CAM-01 Peatonal principal). | El agente detecta personas sin identificarlas y la API responde **202**. | Arq (agente de borde, cola en Redis), BD2 (evento en MongoDB) |
 | 4 | **Evento explicado:** mostrar *Eventos en vivo*. | La fila nueva aparece resaltada sin recargar, con badge **explicado**: el ingreso del paso 2 la justifica y **no** hay alerta. Detener el agente con Ctrl+C. | Arq (puerto `ConsultaRegistrosPorteria`, eventos de dominio), Backend (panel) |
@@ -74,7 +77,7 @@ Las URLs reales están en el panel de Render; no se copian a ningún archivo del
 | **El agente entero** (Python, red del PC) | Postman, carpeta *4. Agente de borde → Enviar evento* con `camara_id` 1 y luego 2. El evento aparece igual en *Eventos en vivo*. |
 | **Telegram** (no llega el mensaje, 409 del webhook) | La alerta aparece igual en *Cola de alertas*: atender y cerrar desde el panel. Revisar `TELEGRAM_BOT_TOKEN`, que el `/start` se hizo y que el `worker` está arriba (`docker compose ps`). |
 | **No aparece nada en Eventos en vivo** y el agente dice "recibido" | El agente está enviando a Render: corregir `API_URL` en `agente/.env`. Si el evento queda **pendiente**, el `worker` está caído: `docker compose up -d worker`. |
-| **El evento de la otra cámara sale explicado o suprimido** | Ya había un ingreso en esa zona en los últimos 10 minutos o una alerta abierta ahí. Usar otra cámara (`--camara-id 7`, Perímetro norte) o volver a correr `nexora:demo-preparar`. |
+| **El evento de la otra cámara sale explicado o suprimido** | Ya había un ingreso en esa zona en los últimos 10 minutos o una alerta abierta ahí. Usar otra cámara: `nexora:demo-preparar --camaras=1,2,7` y luego `--camara-id 7` (Perímetro norte). O volver a correr `nexora:demo-preparar`. |
 | **El agente responde 401 o 429** | Revisar `AGENTE_EMAIL`/`AGENTE_PASSWORD`; si hubo muchos intentos, `php artisan cache:clear`. |
 | **El agente no tiene red** | Sigue detectando y guarda en su cola local; al volver la red, reenvía. Sirve como demo de resiliencia. |
 | **Docker local no arranca** | Hacer la demo contra Render: preparar con `nexora:demo-preparar` pasándole las URLs de la nube (ver arriba), `API_URL` del agente apuntando a Render y el panel en la URL pública. |

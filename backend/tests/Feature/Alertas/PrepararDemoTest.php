@@ -23,8 +23,17 @@ class PrepararDemoTest extends TestCase
         User::factory()->conRol(Rol::Admin)->create();
     }
 
+    /** Las del guion: el comando, sin --camaras, exige que existan la 1 y la 2. */
+    private function camarasDelGuion(): void
+    {
+        $zona = Zona::factory()->create();
+        Camara::factory()->create(['id' => 1, 'zona_id' => $zona->id]);
+        Camara::factory()->create(['id' => 2, 'zona_id' => $zona->id]);
+    }
+
     public function test_cierra_abiertas_y_atendidas_y_deja_las_cerradas_intactas(): void
     {
+        $this->camarasDelGuion();
         $abierta = $this->crearAlerta();
         $atendida = $this->crearAlerta(['estado' => 'atendida']);
         $cerrada = $this->crearAlerta(['estado' => 'cerrada', 'clasificacion' => 'incidente', 'observacion' => 'Robo']);
@@ -45,6 +54,7 @@ class PrepararDemoTest extends TestCase
 
     public function test_cada_cierre_queda_en_la_bitacora_con_la_cadena_intacta(): void
     {
+        $this->camarasDelGuion();
         $this->crearAlerta();
         $this->crearAlerta(['estado' => 'atendida']);
 
@@ -55,22 +65,62 @@ class PrepararDemoTest extends TestCase
         $this->assertSame(2, EntradaBitacora::where('tipo', 'alerta_cerrada')->count());
     }
 
-    public function test_deja_todas_las_camaras_activas_con_senal_reciente(): void
+    public function test_por_defecto_deja_activas_solo_las_camaras_1_y_2_y_las_demas_inactivas(): void
     {
         $zona = Zona::factory()->create();
-        Camara::factory()->create(['zona_id' => $zona->id, 'estado' => EstadoCamara::Inactiva]);
-        Camara::factory()->create(['zona_id' => $zona->id, 'estado' => EstadoCamara::SinSenal, 'ultima_conexion' => now()->subDay()]);
+        $una = Camara::factory()->create(['id' => 1, 'zona_id' => $zona->id, 'estado' => EstadoCamara::Inactiva]);
+        $dos = Camara::factory()->create(['id' => 2, 'zona_id' => $zona->id, 'estado' => EstadoCamara::SinSenal, 'ultima_conexion' => now()->subDay()]);
+        $otra = Camara::factory()->create(['id' => 3, 'zona_id' => $zona->id, 'estado' => EstadoCamara::Activa, 'ultima_conexion' => now()->subDay()]);
 
-        $this->artisan('nexora:demo-preparar')->expectsOutputToContain('2 cámaras activas')->assertSuccessful();
+        $this->artisan('nexora:demo-preparar')
+            ->expectsOutputToContain('2 cámaras activas')
+            ->expectsOutputToContain('1 cámaras inactivas')
+            ->assertSuccessful();
 
-        foreach (Camara::all() as $camara) {
-            $this->assertSame(EstadoCamara::Activa, $camara->estado);
-            $this->assertTrue($camara->ultima_conexion->gt(now()->subMinute()));
+        foreach ([$una, $dos] as $camara) {
+            $this->assertSame(EstadoCamara::Activa, $camara->fresh()->estado);
+            $this->assertTrue($camara->fresh()->ultima_conexion->gt(now()->subMinute()));
         }
+        $this->assertSame(EstadoCamara::Inactiva, $otra->fresh()->estado);
+
+        // La inactiva no entra al chequeo de heartbeat: no dispara "sin señal".
+        $this->travel(10)->minutes();
+        $this->artisan('nexora:camaras-sin-senal')->assertSuccessful();
+        $this->assertSame(EstadoCamara::Inactiva, $otra->fresh()->estado);
+    }
+
+    public function test_con_camaras_activa_solo_las_pedidas(): void
+    {
+        $zona = Zona::factory()->create();
+        [$a, $b, $c] = Camara::factory()->count(3)->create(['zona_id' => $zona->id, 'estado' => EstadoCamara::Activa]);
+
+        $this->artisan('nexora:demo-preparar', ['--camaras' => "{$a->id}, {$c->id}"])
+            ->expectsOutputToContain('2 cámaras activas')
+            ->assertSuccessful();
+
+        $this->assertSame(EstadoCamara::Activa, $a->fresh()->estado);
+        $this->assertSame(EstadoCamara::Inactiva, $b->fresh()->estado);
+        $this->assertSame(EstadoCamara::Activa, $c->fresh()->estado);
+    }
+
+    public function test_camaras_inexistentes_o_mal_escritas_fallan_sin_cambiar_nada(): void
+    {
+        $alerta = $this->crearAlerta();
+        $camara = Camara::factory()->create(['zona_id' => Zona::factory()->create()->id, 'estado' => EstadoCamara::SinSenal]);
+
+        $this->artisan('nexora:demo-preparar', ['--camaras' => "{$camara->id},999"])
+            ->expectsOutputToContain('No existen las cámaras: 999')
+            ->assertFailed();
+        $this->artisan('nexora:demo-preparar', ['--camaras' => '1,dos'])->assertFailed();
+        $this->artisan('nexora:demo-preparar', ['--camaras' => ''])->assertFailed();
+
+        $this->assertSame('abierta', $alerta->fresh()->estado->value);
+        $this->assertSame(EstadoCamara::SinSenal, $camara->fresh()->estado);
     }
 
     public function test_sin_admin_activo_falla_sin_cerrar_nada(): void
     {
+        $this->camarasDelGuion();
         User::query()->update(['activo' => false]);
         $alerta = $this->crearAlerta();
 
@@ -93,6 +143,7 @@ class PrepararDemoTest extends TestCase
 
     public function test_en_produccion_con_force_corre(): void
     {
+        $this->camarasDelGuion();
         $alerta = $this->crearAlerta();
         $this->app->detectEnvironment(fn () => 'production');
 

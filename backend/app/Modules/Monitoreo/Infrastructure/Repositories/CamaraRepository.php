@@ -6,6 +6,7 @@ use App\Modules\Monitoreo\Domain\EstadoCamara;
 use App\Modules\Monitoreo\Domain\Models\Camara;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 class CamaraRepository
 {
@@ -38,9 +39,25 @@ class CamaraRepository
         $camara->save();
     }
 
-    /** Deja todas las cámaras activas con señal de ahora. Devuelve cuántas son. */
-    public function activarTodas(): int
+    /** @return list<int> los ids de la lista que no existen */
+    public function idsInexistentes(array $ids): array
     {
-        return Camara::query()->update(['estado' => EstadoCamara::Activa, 'ultima_conexion' => now()]);
+        return array_values(array_diff($ids, Camara::whereIn('id', $ids)->pluck('id')->all()));
+    }
+
+    /**
+     * Deja activas, con señal de ahora, solo las cámaras de `$ids` y las demás inactivas: así las que
+     * no tienen agente no disparan "sin señal". Devuelve las activadas y cuántas quedaron inactivas.
+     *
+     * @return array{0: Collection<int, Camara>, 1: int}
+     */
+    public function activarSolo(array $ids): array
+    {
+        return DB::transaction(function () use ($ids) {
+            Camara::whereIn('id', $ids)->update(['estado' => EstadoCamara::Activa, 'ultima_conexion' => now()]);
+            $inactivas = Camara::whereNotIn('id', $ids)->update(['estado' => EstadoCamara::Inactiva]);
+
+            return [Camara::whereIn('id', $ids)->orderBy('id')->get(), $inactivas];
+        });
     }
 }
