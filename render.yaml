@@ -5,6 +5,9 @@ services:
     name: nexora-security
     runtime: docker
     plan: free
+    # Neon, Atlas y Upstash están en us-east-1: en Virginia cada consulta no cruza el país.
+    # Render no permite cambiar la región de un servicio ya creado.
+    region: virginia
     dockerfilePath: ./docker/produccion/Dockerfile
     dockerContext: .
     # Sin healthCheckPath: Render lo llamaría cada ~5 s y cada /up le hace un PING a Upstash (unos 500 mil
@@ -16,6 +19,9 @@ services:
         sync: false
       - key: APP_URL
         sync: false
+      # Sin esto la app queda en UTC y las alertas salen 5 h corridas (04:45 en vez de 23:45).
+      - key: APP_TIMEZONE
+        value: America/Bogota
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_URL # Neon: postgresql://...?sslmode=require
