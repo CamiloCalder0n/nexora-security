@@ -3,7 +3,7 @@
 Cada requisito de cada materia → dónde se cumple en el repositorio o en el sistema.
 Los requisitos salen del plan maestro (`PLAN_MAESTRO_NEXORA.md`, secciones 1, 2, 4 y 8). Antes de entregar hay que contrastarlos con el enunciado de cada profe.
 
-Estado al 9 de noviembre de 2026, rama `chore/KAN-43-pulido-final` (PR #1 a #13 ya mergeados en `main`). **Hecho** = está en el código y tiene tests o se probó; **Pendiente** = falta. La última auditoría de punta a punta no encontró hallazgos altos ni medios: ver `docs/HALLAZGOS_SANTIAGO.md`.
+Estado al 10 de noviembre de 2026, rama `chore/KAN-43-auditoria-final` (PR #1 a #14 ya mergeados en `main`). **Hecho** = está en el código y tiene tests o se probó; **Pendiente** = falta. La auditoría final contrastó esta matriz con el código: hallazgos y riesgos de la demo en `docs/AUDITORIA_FINAL.md`; lo de Santiago en `docs/HALLAZGOS_SANTIAGO.md`.
 
 Las rutas de `backend/` se abrevian así: `Modules/` = `backend/app/Modules/`, `tests/` = `backend/tests/`.
 
@@ -26,19 +26,22 @@ Las rutas de `backend/` se abrevian así: `Modules/` = `backend/app/Modules/`, `
 | Códigos HTTP 200, 201, 204, 401, 403, 404, 409, 422 (y 202, 429 del agente) | Hecho | tests `tests/Feature/{Porteria/AutorizacionApiTest,Monitoreo/ZonaApiTest,Identidad/AuthApiTest,Monitoreo/IngestaAgenteTest}.php`; carpeta "5. Errores esperados" de Postman |
 | Paginación (10) y búsqueda `?search=` | Hecho | repositorios `paginar()`; componente `backend/resources/views/components/tabla.blade.php` |
 | Panel web Blade + Bootstrap por roles (frontend implementado) | Hecho | `backend/resources/views/layouts`, vistas en `Modules/*/Resources/views` |
-| CRUD web: zonas, residentes, autorizaciones, usuarios | Hecho | `Modules/Monitoreo/Http/Controllers/Web/ZonaController.php`, `Modules/Porteria/Http/Controllers/Web/{ResidenteController,AutorizacionController}.php`, `Modules/Identidad/Http/Controllers/Web/UsuarioController.php`; tests `tests/Feature/Panel/` |
+| CRUD web: zonas, residentes y autorizaciones; usuarios solo listado y activar/desactivar | Hecho (usuarios parcial: no se crean ni editan cuentas desde el panel, HU15) | `Modules/Monitoreo/Http/Controllers/Web/ZonaController.php`, `Modules/Porteria/Http/Controllers/Web/{ResidenteController,AutorizacionController}.php`, `Modules/Identidad/Http/Controllers/Web/UsuarioController.php`; tests `tests/Feature/Panel/` |
 | Registro de ingresos y salidas (vigilante) y pantallas del residente | Hecho | `Modules/Porteria/Http/Controllers/Web/{IngresoController,MisAutorizacionesController,MisVisitasController}.php`; tests `tests/Feature/Panel/{IngresosPanelTest,ResidentePanelTest}.php` |
 | Dashboard con gráficos | Hecho | `Modules/Analitica` (ingresos por día de PostgreSQL y alertas por zona de MongoDB); `tests/Feature/Panel/DashboardTest.php` |
 | Páginas de error propias (403, 404, 419, 500, 503) | Hecho | `backend/resources/views/errors/` |
-| Tests automáticos en verde | Hecho | `docker compose exec app php artisan test` (328 tests en esta rama) |
+| Tests automáticos en verde | Hecho | `docker compose exec app php artisan test` (331 tests en esta rama) |
 | Estilo de código (Pint) | Hecho | `vendor/bin/pint --test` |
-| Colección Postman con entorno, sin secretos | Hecho | `postman/Nexora.postman_collection.json`, `postman/Nexora.postman_environment.json` (30 requests, 38 aserciones en verde con newman) |
+| Colección Postman con entorno, sin secretos | Hecho | `postman/Nexora.postman_collection.json`, `postman/Nexora.postman_environment.json` (30 requests, 38 aserciones en verde con newman pasando `--env-var clave_semilla=password`; sin eso todo da 401) |
 | Cliente externo de la API (agente de borde) | Hecho | `agente/` (Santiago); contrato `docs/CONTRATO_API_AGENTE.md` |
 | Docker local con un comando | Hecho | `docker-compose.yml`, `docker/php/Dockerfile` |
-| Despliegue en Render | Hecho (configuración) | PR #8 de Santiago mergeado: `docker/produccion/`, `render.yaml`, `docs/DESPLIEGUE.md`; falta confirmar `APP_DEBUG=false` en Render |
+| Despliegue en Render | Hecho | `docker/produccion/`, `render.yaml`, `docs/DESPLIEGUE.md`. Comprobado el 10 de noviembre contra la URL pública: `/up` 200, errores JSON sin traza (`APP_DEBUG=false`), cookies `secure` y `httponly`, webhook sin secreto 404 |
 | Documento arquitectura.pdf (v2) y evidencias | Pendiente | `docs/backend/` (vacío) |
 | Video de la entrevista con el celador | Pendiente | guion en `PLAN_MAESTRO_NEXORA.md` §9; se graba el lunes 9 |
-| Etiquetas v0.1 … v1.0 | Pendiente | aún no hay etiquetas en el repo |
+| Etiquetas v0.1 … v1.0 | Hecho hasta v0.4 / Pendiente v1.0 | existen `docs`, `v0.1`, `v0.2`, `v0.3` y `v0.4`; falta `v1.0` al entregar |
+| Datos personales según el rol (HU10, Ley 1581) | Hecho | el residente solo ve sus unidades (`AutorizacionPolicy`); el consejo ve la bitácora de ingresos con el documento del visitante enmascarado (`RegistroPorteria::documentoEnmascarado`, test `test_el_consejo_ve_el_documento_enmascarado`) |
+| Novedades y entrega de turno (HU20, KAN-24) | Pendiente | no hay código; quedó fuera del prototipo |
+| Exportar evidencia CSV/PDF (HU19, KAN-23) | Pendiente | era "si sobra tiempo"; no se hizo |
 | Datos de demo reproducibles | Hecho | `php artisan nexora:demo-reset` (`backend/app/Console/Commands/ReiniciarDemo.php`; se niega en producción, test `tests/Feature/Support/ReiniciarDemoTest.php`); guion en `docs/DEMO.md` |
 
 ## Bases de Datos 2 (NoSQL)
@@ -80,7 +83,7 @@ Las rutas de `backend/` se abrevian así: `Modules/` = `backend/app/Modules/`, `
 | Trazabilidad HU ↔ código (clave Jira en ramas y commits) | Hecho | ramas `feature/KAN-xx-*`, commits Conventional con `KAN-xx` |
 | Flujo de Git con Pull Requests revisados | Hecho | PR #1 a #13 en GitHub; CI en `.github/workflows/ci.yml` |
 | Integración continua (tests, estilo, higiene) | Hecho | `.github/workflows/ci.yml` (Santiago) |
-| Prototipo funcional | Hecho | panel + API + agente; guion de la demo en `docs/DEMO.md` (falta el aviso "Llegó tu visita" al residente, ver `docs/HALLAZGOS_SANTIAGO.md`) |
+| Prototipo funcional | Hecho | panel + API + agente; guion de la demo en `docs/DEMO.md`, probado paso a paso en local el 10 de noviembre (falta el aviso "Llegó tu visita" al residente, HU17: ver `docs/HALLAZGOS_SANTIAGO.md`) |
 | Pruebas automatizadas como práctica de calidad | Hecho | `backend/tests/` (PHPUnit) y `agente/tests/` (pytest) |
 | Documento final (proceso, Pressman/PMBOK, Visión RUP, arquitectura) | Pendiente | `docs/ingsoft/` está vacío |
 | Jira al día (HU en "Listo") | Pendiente | revisar al cierre |
