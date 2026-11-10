@@ -54,6 +54,11 @@ class AutenticacionService
     public function emitirToken(string $email, string $password, string $dispositivo, ?Rol $soloRol = null): array
     {
         $usuario = $this->validarCredenciales($email, $password, $soloRol);
+
+        if ($soloRol === null && $usuario->rol === Rol::Agente) {
+            throw new CredencialesInvalidas;  // el agente tiene su propio login, con su habilidad acotada
+        }
+
         $esAgente = $usuario->rol === Rol::Agente;
         $vence = $esAgente ? null : now()->addHours(self::HORAS_TOKEN_USUARIO);
 

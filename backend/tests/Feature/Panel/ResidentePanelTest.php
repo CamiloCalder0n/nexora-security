@@ -241,4 +241,11 @@ class ResidentePanelTest extends TestCase
             ->assertOk()
             ->assertSee('Algún filtro no era válido; se muestran todos los registros.');
     }
+
+    public function test_el_logo_lleva_al_inicio_de_su_rol_y_no_a_un_403(): void
+    {
+        $this->actingAs($this->usuario)->get(route('panel.porteria.mis-autorizaciones.index'))
+            ->assertOk()
+            ->assertSee('href="'.route('panel.inicio').'" class="nx-marca', false);
+    }
 }

@@ -4,7 +4,10 @@ namespace Tests\Feature\Identidad;
 
 use App\Models\User;
 use App\Modules\Identidad\Application\AutenticacionService;
+use App\Modules\Identidad\Domain\Exceptions\CredencialesInvalidas;
 use App\Modules\Identidad\Domain\Rol;
+use App\Modules\Porteria\Domain\Exceptions\AutorizacionNoVigente;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\PersonalAccessToken;
 use Tests\TestCase;
@@ -134,5 +137,20 @@ class AuthApiTest extends TestCase
         $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.99'])
             ->postJson(route('api.v1.identidad.login'), ['email' => 'v@nexora.test', 'password' => 'password'])
             ->assertTooManyRequests();
+    }
+
+    public function test_login_de_personas_rechaza_al_agente_con_401(): void
+    {
+        User::factory()->conRol(Rol::Agente)->create(['email' => 'agente@nexora.test']);
+
+        $this->postJson(route('api.v1.identidad.login'), ['email' => 'agente@nexora.test', 'password' => 'password'])
+            ->assertUnauthorized()
+            ->assertJsonPath('message', 'Credenciales inválidas');
+    }
+
+    public function test_credenciales_invalidas_no_se_reportan_al_log(): void
+    {
+        $this->assertFalse(app(ExceptionHandler::class)->shouldReport(new CredencialesInvalidas));
+        $this->assertFalse(app(ExceptionHandler::class)->shouldReport(new AutorizacionNoVigente));
     }
 }

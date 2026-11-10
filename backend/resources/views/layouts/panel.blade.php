@@ -8,7 +8,7 @@
 
 <aside class="nx-sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="menuPanel" aria-labelledby="menuPanelTitulo">
     <div class="d-flex align-items-center justify-content-between px-3 py-3 border-bottom">
-        <a href="{{ Route::has('panel.dashboard') ? route('panel.dashboard') : url('/') }}" class="nx-marca fs-5" id="menuPanelTitulo">
+        <a href="{{ route('panel.inicio') }}" class="nx-marca fs-5" id="menuPanelTitulo">
             <i class="bi bi-shield-lock me-1"></i>Nexora
         </a>
         <button type="button" class="btn-close d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#menuPanel" aria-label="Cerrar menú"></button>
