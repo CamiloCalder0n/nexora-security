@@ -68,7 +68,7 @@
                 <td>
                     <div class="fw-medium">{{ $registro->nombre_visitante }}</div>
                     <small class="nx-texto-suave">
-                        Doc. {{ $registro->documento }}
+                        Doc. {{ $puedeRegistrar ? $registro->documento : $registro->documentoEnmascarado() }}
                         @if ($registro->placa) · <span class="text-uppercase">{{ $registro->placa }}</span>@endif
                         @if ($registro->cantidad_personas > 1) · {{ $registro->cantidad_personas }} personas @endif
                     </small>

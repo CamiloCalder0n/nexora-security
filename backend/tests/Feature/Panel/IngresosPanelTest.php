@@ -226,6 +226,22 @@ class IngresosPanelTest extends TestCase
         $this->actingAs($consejo)->patch(route('panel.porteria.ingresos.salida', $registro))->assertForbidden();
     }
 
+    /** Ley 1581 y HU10: el consejo consulta la bitácora, pero no ve el documento completo del visitante. */
+    public function test_el_consejo_ve_el_documento_enmascarado(): void
+    {
+        RegistroPorteria::factory()->create(['unidad_id' => $this->unidad->id, 'zona_id' => $this->zona->id, 'documento' => '1020304050']);
+
+        $this->actingAs(User::factory()->conRol(Rol::Consejo)->create())
+            ->get(route('panel.porteria.ingresos.index'))
+            ->assertOk()
+            ->assertDontSee('1020304050')
+            ->assertSee('••••••4050');
+
+        $this->actingAs($this->vigilante)
+            ->get(route('panel.porteria.ingresos.index'))
+            ->assertSee('1020304050');
+    }
+
     public function test_filtra_por_tipo_y_fechas(): void
     {
         RegistroPorteria::factory()->create(['tipo_ingreso' => 'vehiculo', 'placa' => 'XYZ987', 'nombre_visitante' => 'Conductor uno', 'fecha_ingreso' => now()]);
