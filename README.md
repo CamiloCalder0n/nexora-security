@@ -76,7 +76,8 @@ docker compose exec app php artisan nexora:demo-reset   # se niega con APP_ENV=p
 docker compose exec app php artisan test        # PHPUnit
 docker compose exec app vendor/bin/pint --test  # estilo
 cd agente && pytest -q                           # agente (con su venv, ver agente/README.md)
-npx newman run postman/Nexora.postman_collection.json -e postman/Nexora.postman_environment.json
+# Postman con newman: el entorno no guarda la clave de los usuarios de demo, se pasa aquí
+npx newman run postman/Nexora.postman_collection.json -e postman/Nexora.postman_environment.json --env-var clave_semilla=password
 ```
 
 Prueba de carga con k6: [`pruebas/k6/README.md`](pruebas/k6/README.md).
