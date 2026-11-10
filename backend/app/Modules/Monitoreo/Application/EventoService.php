@@ -7,6 +7,7 @@ use App\Modules\Monitoreo\Domain\Models\Zona;
 use App\Modules\Monitoreo\Domain\ResultadoEvento;
 use App\Modules\Monitoreo\Infrastructure\Repositories\EventoRepository;
 use App\Modules\Monitoreo\Infrastructure\Repositories\ZonaRepository;
+use Illuminate\Support\Collection;
 
 /**
  * Lo que otros módulos (Alertas) pueden hacer con los eventos y sus zonas. Alertas lee el evento
@@ -22,6 +23,12 @@ class EventoService
     public function buscar(string $id): ?Evento
     {
         return $this->eventos->buscar($id);
+    }
+
+    /** @return Collection<int, Evento> */
+    public function recientes(int $limite = 50): Collection
+    {
+        return $this->eventos->recientes($limite);
     }
 
     public function zonaDe(Evento $evento): Zona
