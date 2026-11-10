@@ -2,12 +2,14 @@
 
 namespace App\Modules\Porteria\Domain\Exceptions;
 
+use Illuminate\Contracts\Debug\ShouldntReport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use RuntimeException;
 
-abstract class ReglaPorteriaException extends RuntimeException
+/** Regla de negocio que se le responde al usuario (409/422), no una falla: no va al log. */
+abstract class ReglaPorteriaException extends RuntimeException implements ShouldntReport
 {
     abstract public function status(): int;
 

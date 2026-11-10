@@ -4,7 +4,7 @@ use App\Modules\Identidad\Http\Controllers\Api\V1\AuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.v1.identidad.')->group(function () {
-    Route::middleware('throttle:10,1')->group(function () {
+    Route::middleware('throttle:login')->group(function () {
         Route::post('login', [AuthController::class, 'login'])->name('login');
         Route::post('agente/login', [AuthController::class, 'loginAgente'])->name('agente.login');
     });

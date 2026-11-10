@@ -2,12 +2,14 @@
 
 namespace App\Modules\Identidad\Domain\Exceptions;
 
+use Illuminate\Contracts\Debug\ShouldntReport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use RuntimeException;
 
-class CredencialesInvalidas extends RuntimeException
+/** Respuesta esperada (401), no una falla: no va al log. */
+class CredencialesInvalidas extends RuntimeException implements ShouldntReport
 {
     public function __construct(string $mensaje = 'Credenciales inválidas')
     {
