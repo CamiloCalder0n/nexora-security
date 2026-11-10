@@ -30,9 +30,10 @@ class AutorizacionService
         return $this->autorizaciones->paginar($filtros);
     }
 
-    public function listarDeResidente(Residente $residente, array $filtros = []): LengthAwarePaginator
+    /** Una cuenta de residente sin perfil asociado no tiene unidades: ve una lista vacía. */
+    public function listarDeResidente(?Residente $residente, array $filtros = []): LengthAwarePaginator
     {
-        $filtros['unidad_ids'] = $this->residentes->idsUnidades($residente);
+        $filtros['unidad_ids'] = $residente ? $this->residentes->idsUnidades($residente) : [];
 
         return $this->autorizaciones->paginar($filtros);
     }

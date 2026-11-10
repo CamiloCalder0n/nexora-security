@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 #[Table('registros_porteria')]
 #[UseFactory(RegistroPorteriaFactory::class)]
@@ -31,6 +32,14 @@ class RegistroPorteria extends Model
             'fecha_ingreso' => 'datetime',
             'fecha_salida' => 'datetime',
         ];
+    }
+
+    /** Para quien consulta la bitácora sin operar la portería (Ley 1581): solo los últimos 4 caracteres. */
+    public function documentoEnmascarado(): string
+    {
+        $largo = mb_strlen((string) $this->documento);
+
+        return Str::mask((string) $this->documento, '•', 0, $largo > 4 ? $largo - 4 : $largo);
     }
 
     public function unidad(): BelongsTo

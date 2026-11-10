@@ -72,6 +72,14 @@ class AutorizacionApiTest extends TestCase
             ->assertJsonPath('data.0.unidad.etiqueta', $this->unidad->etiqueta);
     }
 
+    public function test_residente_sin_perfil_recibe_lista_vacia_y_no_un_500(): void
+    {
+        Autorizacion::factory()->create();
+        Sanctum::actingAs(User::factory()->conRol(Rol::Residente)->create());
+
+        $this->getJson('/api/v1/autorizaciones')->assertOk()->assertJsonCount(0, 'data');
+    }
+
     public function test_admin_ve_todas_paginadas_y_busca(): void
     {
         Sanctum::actingAs(User::factory()->conRol(Rol::Admin)->create());
