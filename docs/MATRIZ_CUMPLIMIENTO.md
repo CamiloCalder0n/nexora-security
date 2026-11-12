@@ -30,7 +30,7 @@ Las rutas de `backend/` se abrevian así: `Modules/` = `backend/app/Modules/`, `
 | Registro de ingresos y salidas (vigilante) y pantallas del residente | Hecho | `Modules/Porteria/Http/Controllers/Web/{IngresoController,MisAutorizacionesController,MisVisitasController}.php`; tests `tests/Feature/Panel/{IngresosPanelTest,ResidentePanelTest}.php` |
 | Dashboard con gráficos | Hecho | `Modules/Analitica` (ingresos por día de PostgreSQL y alertas por zona de MongoDB); `tests/Feature/Panel/DashboardTest.php` |
 | Páginas de error propias (403, 404, 419, 500, 503) | Hecho | `backend/resources/views/errors/` |
-| Tests automáticos en verde | Hecho | `docker compose exec app php artisan test` (331 tests en esta rama) |
+| Tests automáticos en verde | Hecho | `docker compose exec app php artisan test` (362 tests en la rama `feature/KAN-9-historial-auditoria-informe`) |
 | Estilo de código (Pint) | Hecho | `vendor/bin/pint --test` |
 | Colección Postman con entorno, sin secretos | Hecho | `postman/Nexora.postman_collection.json`, `postman/Nexora.postman_environment.json` (30 requests, 38 aserciones en verde con newman pasando `--env-var clave_semilla=password`; sin eso todo da 401) |
 | Cliente externo de la API (agente de borde) | Hecho | `agente/` (Santiago); contrato `docs/CONTRATO_API_AGENTE.md` |
@@ -43,6 +43,17 @@ Las rutas de `backend/` se abrevian así: `Modules/` = `backend/app/Modules/`, `
 | Novedades y entrega de turno (HU20, KAN-24) | Pendiente | no hay código; quedó fuera del prototipo |
 | Exportar evidencia CSV/PDF (HU19, KAN-23) | Pendiente | era "si sobra tiempo"; no se hizo |
 | Datos de demo reproducibles | Hecho | `php artisan nexora:demo-reset` (`backend/app/Console/Commands/ReiniciarDemo.php`; se niega en producción, test `tests/Feature/Support/ReiniciarDemoTest.php`); guion en `docs/DEMO.md` |
+
+## Requerimientos funcionales con caso de uso
+
+RF005, RF007 y RF008 entraron en la rama `feature/KAN-9-historial-auditoria-informe` (KAN-9, KAN-11, KAN-12, KAN-18). Se probaron con tests y a mano en el panel el 11 de noviembre, con cada rol.
+
+| Requisito | Estado | Dónde se cumple |
+|---|---|---|
+| RF005 · Historial de eventos (HU14, CU05): filtros por fecha, zona, tipo y resultado, orden, paginación y exportar CSV | Hecho | `Modules/Analitica/Application/HistorialService.php`, `Modules/Analitica/Infrastructure/Repositories/EventosLecturaRepository.php` (lee MongoDB sin la ruta de la evidencia), `HistorialController`, `FiltroHistorialRequest`; lo ven admin, consejo y vigilante; el CSV solo admin y consejo; test `tests/Feature/Panel/HistorialTest.php` |
+| RF007 · Evidencia con motivo y auditoría de accesos (CU07, CU10) | Hecho | solo el admin abre la evidencia y debe escribir un motivo (mín. 10 caracteres, `ConsultarEvidenciaRequest`, `throttle:20,1`); cada consulta queda en la tabla `auditoria_accesos` (`Modules/Identidad/{Application/AuditoriaService,Domain/Models/AccesoAuditado}.php`). Todo 403 por rol también se registra desde `EnsureRol`. Pantalla *Auditoría de accesos* con búsqueda, filtro por recurso y fechas, y CSV (`AuditoriaController`); test `tests/Feature/Panel/AuditoriaTest.php` |
+| RF008 · Informe mensual | Hecho | `Modules/Analitica/Application/InformeMensualService.php`: ingresos de portería (PostgreSQL), eventos por resultado y alertas por estado, clasificación, zona, hora, escaladas y tiempo de atención (agregaciones en MongoDB); pantalla y CSV para admin y consejo; test `tests/Feature/Panel/InformeMensualTest.php` |
+| CSV compatible con Excel | Hecho | `backend/app/Support/Csv.php` (BOM UTF-8 y `;`) |
 
 ## Bases de Datos 2 (NoSQL)
 

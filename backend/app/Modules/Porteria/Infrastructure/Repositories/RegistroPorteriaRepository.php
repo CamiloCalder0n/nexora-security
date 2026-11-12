@@ -58,6 +58,11 @@ class RegistroPorteriaRepository implements ConsultaRegistrosPorteria
             ->all();
     }
 
+    public function contarIngresos(CarbonInterface $desde, CarbonInterface $hasta): int
+    {
+        return RegistroPorteria::query()->whereBetween('fecha_ingreso', [$desde, $hasta])->count();
+    }
+
     public function buscarParaCorrelacion(int $zonaId, CarbonInterface $momento, int $ventanaMin, int $cantidad): ?RegistroPorteria
     {
         return RegistroPorteria::query()
