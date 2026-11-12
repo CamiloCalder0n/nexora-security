@@ -4,6 +4,10 @@ Sistema de vigilancia para un conjunto residencial. Un agente de borde detecta p
 
 Un solo sistema para 4 materias: Backend, Bases de Datos 2 (NoSQL), Arquitectura de Software e Ingeniería de Software. Qué cumple cada una y dónde: [`docs/MATRIZ_CUMPLIMIENTO.md`](docs/MATRIZ_CUMPLIMIENTO.md).
 
+## Usuario real
+
+Entrevista al vigilante de un conjunto de Bucaramanga (evidencia del usuario real): https://youtu.be/WQN2yHYLb04
+
 ## Plataformas
 
 1. **Panel web** (Laravel 13 + Blade + Bootstrap): administradora, vigilante, consejo y residentes.
