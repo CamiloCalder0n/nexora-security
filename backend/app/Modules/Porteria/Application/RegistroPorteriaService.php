@@ -47,6 +47,12 @@ class RegistroPorteriaService
         return $serie;
     }
 
+    /** RF008: total de ingresos registrados en un rango (informe mensual). */
+    public function totalIngresos(CarbonInterface $desde, CarbonInterface $hasta): int
+    {
+        return $this->registros->contarIngresos($desde, $hasta);
+    }
+
     public function registrar(User $vigilante, array $datos): RegistroPorteria
     {
         $momento = isset($datos['fecha_ingreso']) ? Carbon::parse($datos['fecha_ingreso']) : now();

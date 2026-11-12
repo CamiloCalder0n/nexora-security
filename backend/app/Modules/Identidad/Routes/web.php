@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Identidad\Http\Controllers\Web\AuditoriaController;
 use App\Modules\Identidad\Http\Controllers\Web\LoginController;
 use App\Modules\Identidad\Http\Controllers\Web\UsuarioController;
 use Illuminate\Support\Facades\Route;
@@ -17,4 +18,6 @@ Route::middleware('auth')->group(function () {
 Route::prefix('panel/identidad')->name('panel.identidad.')->middleware(['auth', 'rol:admin'])->group(function () {
     Route::get('usuarios', [UsuarioController::class, 'index'])->name('usuarios.index');
     Route::patch('usuarios/{usuario}/activo', [UsuarioController::class, 'cambiarActivo'])->name('usuarios.activo');
+    Route::get('auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
+    Route::get('auditoria/csv', [AuditoriaController::class, 'csv'])->name('auditoria.csv');
 });

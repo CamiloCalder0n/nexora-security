@@ -7,6 +7,7 @@
     $secciones = [
         'General' => [
             ['panel.dashboard', 'Dashboard', 'speedometer2', [Rol::Admin, Rol::Vigilante, Rol::Consejo]],
+            ['panel.analitica.informe', 'Informe mensual', 'file-earmark-bar-graph', [Rol::Admin, Rol::Consejo]],
         ],
         'Portería' => [
             ['panel.porteria.ingresos.create', 'Registrar ingreso', 'box-arrow-in-right', [Rol::Vigilante, Rol::Admin]],
@@ -24,9 +25,11 @@
             ['panel.monitoreo.eventos.index', 'Eventos en vivo', 'broadcast', [Rol::Admin, Rol::Vigilante]],
             ['panel.analitica.cola-alertas', 'Cola de alertas', 'bell-fill', [Rol::Vigilante, Rol::Admin]],
             ['panel.alertas.index', 'Alertas', 'bell', [Rol::Admin, Rol::Vigilante, Rol::Consejo]],
+            ['panel.analitica.historial', 'Historial de eventos', 'clock-history', [Rol::Admin, Rol::Vigilante, Rol::Consejo]],
         ],
         'Administración' => [
             ['panel.identidad.usuarios.index', 'Usuarios', 'person-gear', [Rol::Admin]],
+            ['panel.identidad.auditoria.index', 'Auditoría de accesos', 'shield-lock', [Rol::Admin]],
         ],
     ];
 @endphp
